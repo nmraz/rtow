@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::BufWriter;
 
 mod img;
+mod math;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let width = 256;
