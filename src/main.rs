@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let horiz = Vec3::new(viewport_width, 0., 0.);
     let vert = Vec3::new(0., viewport_height, 0.);
-    let lower_left_corner = origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
+    let bottom_left = origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
 
     let scene = Scene::with_primitives(vec![
         Box::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5)),
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             let ray = Ray {
                 origin,
-                dir: Unit3::new_normalize(lower_left_corner + u * horiz + v * vert - origin),
+                dir: Unit3::new_normalize(bottom_left + u * horiz + v * vert - origin),
             };
 
             pixels.push(ray_color(&ray, &scene));
