@@ -1,6 +1,7 @@
+use std::convert::TryInto;
 use std::iter;
 
-use rand::Rng;
+use rand::{Rng, RngCore};
 
 use crate::math::{Ray, Vec3};
 use crate::scene::Scene;
@@ -62,6 +63,7 @@ impl Camera {
 
 pub struct RenderOptions {
     pub samples_per_pixel: u32,
+    pub max_depth: u32,
 }
 
 pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &RenderOptions) {
@@ -70,6 +72,8 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
 
     assert_eq!(buf.len(), (pixel_width * pixel_height) as usize);
 
+    let max_depth = opts.max_depth.try_into().unwrap();
+
     let mut rng = rand::thread_rng();
 
     for py in 0..pixel_height {
@@ -77,7 +81,7 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
             let color = iter::repeat_with(|| {
                 let ray =
                     camera.cast_ray(px as f64 + rng.gen::<f64>(), py as f64 + rng.gen::<f64>());
-                trace_ray(scene, &ray)
+                trace_ray(scene, &ray, &mut rng, max_depth)
             })
             .take(opts.samples_per_pixel as usize)
             .sum::<Vec3>()
@@ -88,11 +92,37 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
     }
 }
 
-fn trace_ray(scene: &Scene, ray: &Ray) -> Vec3 {
+fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec3 {
+    if depth <= 0 {
+        return Vec3::default();
+    }
+
     if let Some(info) = scene.hit(ray) {
-        return 0.5 * (info.normal.as_ref() + Vec3::new(1., 1., 1.));
+        let target = info.point + info.normal.as_ref() + sample_unit_vec(rng);
+        return 0.5
+            * trace_ray(
+                scene,
+                &Ray::pointing_through(info.point, target),
+                rng,
+                depth - 1,
+            );
     }
 
     let t = 0.5 * (ray.dir[1] + 1.);
     (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
+}
+
+fn sample_unit_vec(rng: &mut dyn RngCore) -> Vec3 {
+    sample_unit_sphere(rng).normalize()
+}
+
+fn sample_unit_sphere(rng: &mut dyn RngCore) -> Vec3 {
+    loop {
+        let v = Vec3::new(rng.gen(), rng.gen(), rng.gen());
+        let norm_squared = v.norm_squared();
+
+        if norm_squared > 0. && norm_squared < 1. {
+            break v;
+        }
+    }
 }

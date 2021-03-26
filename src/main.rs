@@ -23,6 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let opts = RenderOptions {
         samples_per_pixel: 100,
+        max_depth: 50,
     };
 
     let mut pixels = vec![Vec3::default(); (camera.pixel_width() * camera.pixel_height()) as usize];
