@@ -10,10 +10,10 @@ pub struct Ray {
 }
 
 impl Ray {
-    pub fn pointing_through(origin: Vec3, point: Vec3) -> Self {
+    pub fn pointing_through(origin: Vec3, target: Vec3) -> Self {
         Self {
             origin,
-            dir: Unit3::new_normalize(point - origin),
+            dir: Unit3::new_normalize(target - origin),
         }
     }
 
