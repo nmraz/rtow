@@ -36,8 +36,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     for j in (0..img_height).rev() {
         for i in 0..img_width {
-            let u = (i as f64) / (img_width as f64 - 1.);
-            let v = (j as f64) / (img_height as f64 - 1.);
+            let u = i as f64 / (img_width as f64 - 1.);
+            let v = j as f64 / (img_height as f64 - 1.);
 
             let ray = Ray {
                 origin,
