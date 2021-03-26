@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let camera = Camera::new(400, 225);
 
     let opts = RenderOptions {
-        samples_per_pixel: 100,
+        samples_per_pixel: 500,
         max_depth: 50,
     };
 

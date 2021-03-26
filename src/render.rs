@@ -101,7 +101,10 @@ fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec
         return match material.scatter(ray, &hit, rng) {
             Some(scattered) => scattered.attenuation.component_mul(&trace_ray(
                 scene,
-                &scattered.ray,
+                &Ray {
+                    origin: hit.point,
+                    dir: scattered.dir,
+                },
                 rng,
                 depth - 1,
             )),

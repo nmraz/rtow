@@ -1,4 +1,4 @@
-use crate::math::{Ray, Unit3, Vec3};
+use crate::math::{Ray, Unit3, Vec3, EPSILON};
 
 pub trait Geom {
     fn hit(&self, ray: &Ray) -> Option<f64>;
@@ -35,9 +35,9 @@ impl Geom for Sphere {
 
         // Find the intersection nearest to the origin (minimal `t`), but never report
         // intersections behind the origin (negative `t`).
-        if t1 > 0. {
+        if t1 > EPSILON {
             Some(t1)
-        } else if t2 > 0. {
+        } else if t2 > EPSILON {
             Some(t2)
         } else {
             None
