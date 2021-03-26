@@ -10,6 +10,13 @@ pub struct Ray {
 }
 
 impl Ray {
+    pub fn pointing_through(origin: Vec3, point: Vec3) -> Self {
+        Self {
+            origin,
+            dir: Unit3::new_normalize(point - origin),
+        }
+    }
+
     pub fn at(&self, t: f64) -> Vec3 {
         self.origin + t * self.dir.into_inner()
     }
