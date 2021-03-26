@@ -1,7 +1,8 @@
-use crate::math::{Ray, Vec3};
+use crate::math::{Ray, Unit3, Vec3};
 
 pub trait Geom {
     fn hit(&self, ray: &Ray) -> Option<f64>;
+    fn outward_normal_at(&self, point: Vec3) -> Unit3;
 }
 
 pub struct Sphere {
@@ -28,5 +29,9 @@ impl Geom for Sphere {
         } else {
             None
         }
+    }
+
+    fn outward_normal_at(&self, point: Vec3) -> Unit3 {
+        Unit3::new_normalize(point - self.center)
     }
 }

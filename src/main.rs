@@ -53,7 +53,7 @@ fn ray_color(ray: &Ray) -> Vec3 {
     let sphere = Sphere::new(Vec3::new(0., 0., -1.), 0.5);
 
     if let Some(t) = sphere.hit(ray) {
-        let n = (ray.at(t) - sphere.center).normalize();
+        let n = sphere.outward_normal_at(ray.at(t)).into_inner();
         return 0.5 * (n + Vec3::new(1., 1., 1.));
     }
 
