@@ -18,20 +18,18 @@ mod scene;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let gray_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
+    let pink_material = Arc::new(Diffuse::new(Vec3::new(1., 0.2, 0.2)));
 
     let scene = Scene::with_primitives(vec![
-        Primitive::new(
-            Sphere::new(Vec3::new(0., 0., -1.), 0.5),
-            gray_material.clone(),
-        ),
+        Primitive::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5), pink_material),
         Primitive::new(Sphere::new(Vec3::new(0., -100.5, -1.), 100.), gray_material),
     ]);
 
-    let camera = Camera::new(400, 225);
+    let camera = Camera::new(1820, 1080);
 
     let opts = RenderOptions {
-        samples_per_pixel: 500,
-        max_depth: 50,
+        samples_per_pixel: 200,
+        max_depth: 10,
     };
 
     let mut pixels = vec![Vec3::default(); (camera.pixel_width() * camera.pixel_height()) as usize];
