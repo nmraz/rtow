@@ -45,3 +45,46 @@ impl Material for Diffuse {
         })
     }
 }
+
+pub struct Metal {
+    pub albedo: Vec3,
+    gloss: f64,
+}
+
+impl Metal {
+    pub fn new(albedo: Vec3, gloss: f64) -> Self {
+        Self {
+            albedo,
+            gloss: gloss.clamp(0., 1.),
+        }
+    }
+}
+
+impl Material for Metal {
+    fn scatter(
+        &self,
+        incoming: Unit3,
+        hit: &HitInfo,
+        rng: &mut dyn RngCore,
+    ) -> Option<ScatteredRay> {
+        let reflected = reflect(*incoming, hit.normal);
+        let dir = Unit3::new_normalize(
+            reflected + (1. - self.gloss) * Vec3::from(UnitSphere.sample(rng)),
+        );
+
+        if dir.dot(&hit.normal) > 0. {
+            let cos_theta = hit.normal.dot(&dir);
+
+            let attenuation =
+                self.albedo + (1. - cos_theta).powi(5) * (Vec3::from_element(1.) - self.albedo);
+
+            Some(ScatteredRay { dir, attenuation })
+        } else {
+            None
+        }
+    }
+}
+
+fn reflect(v: Vec3, n: Unit3) -> Vec3 {
+    v - 2. * v.dot(&n) * n.as_ref()
+}
