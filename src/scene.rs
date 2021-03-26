@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use crate::geom::Geom;
+use crate::material::Material;
 use crate::math::{Ray, Unit3, Vec3};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,26 +35,40 @@ impl HitInfo {
     }
 }
 
+pub struct Primitive {
+    pub geom: Box<dyn Geom>,
+    pub material: Arc<dyn Material>,
+}
+
+impl Primitive {
+    pub fn new(geom: impl Geom + 'static, material: Arc<dyn Material>) -> Self {
+        Self {
+            geom: Box::new(geom),
+            material,
+        }
+    }
+}
+
 pub struct Scene {
-    primitives: Vec<Box<dyn Geom>>,
+    primitives: Vec<Primitive>,
 }
 
 impl Scene {
-    pub fn with_primitives(primitives: Vec<Box<dyn Geom>>) -> Self {
+    pub fn with_primitives(primitives: Vec<Primitive>) -> Self {
         Self { primitives }
     }
 
-    pub fn hit(&self, ray: &Ray) -> Option<HitInfo> {
-        let (geom, t) = self
+    pub fn hit(&self, ray: &Ray) -> Option<(HitInfo, &dyn Material)> {
+        let (prim, t) = self
             .primitives
             .iter()
-            .map(|geom| (geom.as_ref(), geom.hit(ray)))
-            .fold(None, |nearest, (geom, t)| match (nearest, t) {
-                (None, Some(t)) => Some((geom, t)),
-                (Some((_, nearest_t)), Some(t)) if t < nearest_t => Some((geom, t)),
+            .map(|prim| (prim, prim.geom.hit(ray)))
+            .fold(None, |nearest, (prim, t)| match (nearest, t) {
+                (None, Some(t)) => Some((prim, t)),
+                (Some((_, nearest_t)), Some(t)) if t < nearest_t => Some((prim, t)),
                 _ => nearest,
             })?;
 
-        Some(HitInfo::from_geom_ray(geom, ray, t))
+        Some((HitInfo::from_geom_ray(&*prim.geom, ray, t), &*prim.material))
     }
 }

@@ -97,32 +97,18 @@ fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec
         return Vec3::default();
     }
 
-    if let Some(info) = scene.hit(ray) {
-        let target = info.point + info.normal.as_ref() + sample_unit_vec(rng);
-        return 0.5
-            * trace_ray(
+    if let Some((hit, material)) = scene.hit(ray) {
+        return match material.scatter(ray, &hit, rng) {
+            Some(scattered) => scattered.attenuation.component_mul(&trace_ray(
                 scene,
-                &Ray::pointing_through(info.point, target),
+                &scattered.ray,
                 rng,
                 depth - 1,
-            );
+            )),
+            None => Vec3::default(),
+        };
     }
 
     let t = 0.5 * (ray.dir[1] + 1.);
     (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
-}
-
-fn sample_unit_vec(rng: &mut dyn RngCore) -> Vec3 {
-    sample_unit_sphere(rng).normalize()
-}
-
-fn sample_unit_sphere(rng: &mut dyn RngCore) -> Vec3 {
-    loop {
-        let v = Vec3::new(rng.gen(), rng.gen(), rng.gen());
-        let norm_squared = v.norm_squared();
-
-        if norm_squared > 0. && norm_squared < 1. {
-            break v;
-        }
-    }
 }
