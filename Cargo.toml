@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 png = "0.16.8"
 nalgebra = "0.25.3"
+rand = "0.8.3"
