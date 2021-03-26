@@ -2,12 +2,14 @@ use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
 
-use geom::{Geom, Sphere};
+use geom::Sphere;
 use math::{Ray, Unit3, Vec3};
+use scene::Scene;
 
 mod geom;
 mod img;
 mod math;
+mod scene;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let aspect_ratio = 16. / 9.;
@@ -25,6 +27,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vert = Vec3::new(0., viewport_height, 0.);
     let lower_left_corner = origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
 
+    let scene = Scene::with_primitives(vec![Box::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5))]);
+
     let mut pixels = Vec::with_capacity((img_width * img_height) as usize);
 
     for j in (0..img_height).rev() {
@@ -37,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 dir: Unit3::new_normalize(lower_left_corner + u * horiz + v * vert - origin),
             };
 
-            pixels.push(ray_color(&ray));
+            pixels.push(ray_color(&ray, &scene));
         }
     }
 
@@ -49,12 +53,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn ray_color(ray: &Ray) -> Vec3 {
-    let sphere = Sphere::new(Vec3::new(0., 0., -1.), 0.5);
-
-    if let Some(t) = sphere.hit(ray) {
-        let n = sphere.outward_normal_at(ray.at(t)).into_inner();
-        return 0.5 * (n + Vec3::new(1., 1., 1.));
+fn ray_color(ray: &Ray, scene: &Scene) -> Vec3 {
+    if let Some(info) = scene.hit(ray) {
+        return 0.5 * (info.normal.as_ref() + Vec3::new(1., 1., 1.));
     }
 
     let t = 0.5 * (ray.dir[1] + 1.);
