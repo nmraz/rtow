@@ -7,14 +7,9 @@ use math::{Ray, Unit3, Vec3};
 mod img;
 mod math;
 
-fn ray_color(r: &Ray) -> Vec3 {
-    let t = 0.5 * (r.dir[1] + 1.);
-    (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let aspect_ratio = 16. / 9.;
-    
+
     let img_width = 400;
     let img_height = (img_width as f64 / aspect_ratio) as _;
 
@@ -35,12 +30,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             let u = (i as f64) / (img_width as f64 - 1.);
             let v = (j as f64) / (img_height as f64 - 1.);
 
-            let r = Ray {
+            let ray = Ray {
                 origin,
                 dir: Unit3::new_normalize(lower_left_corner + u * horiz + v * vert - origin),
             };
 
-            pixels.push(ray_color(&r));
+            pixels.push(ray_color(&ray));
         }
     }
 
@@ -50,4 +45,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     img::write_png(&mut writer, &raw_pixels, img_width, img_height)?;
 
     Ok(())
+}
+
+fn ray_color(ray: &Ray) -> Vec3 {
+    if hit_sphere(Vec3::new(0., 0., -1.), 0.5, ray) {
+        return Vec3::new(1., 0., 0.);
+    }
+
+    let t = 0.5 * (ray.dir[1] + 1.);
+    (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
+}
+
+fn hit_sphere(center: Vec3, radius: f64, ray: &Ray) -> bool {
+    let oc = ray.origin - center;
+    let b = 2. * oc.dot(ray.dir.as_ref());
+    let c = oc.norm_squared() - radius * radius;
+
+    let discriminant = b * b - 4. * c;
+
+    discriminant > 0.
 }
