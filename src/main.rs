@@ -27,7 +27,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vert = Vec3::new(0., viewport_height, 0.);
     let lower_left_corner = origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
 
-    let scene = Scene::with_primitives(vec![Box::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5))]);
+    let scene = Scene::with_primitives(vec![
+        Box::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5)),
+        Box::new(Sphere::new(Vec3::new(0., -100.5, 1.), 100.)),
+    ]);
 
     let mut pixels = Vec::with_capacity((img_width * img_height) as usize);
 
