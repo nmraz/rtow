@@ -98,18 +98,20 @@ fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec
     }
 
     if let Some((hit, material)) = scene.hit(ray) {
-        return match material.scatter(ray, &hit, rng) {
-            Some(scattered) => scattered.attenuation.component_mul(&trace_ray(
-                scene,
-                &Ray {
-                    origin: hit.point,
-                    dir: scattered.dir,
-                },
-                rng,
-                depth - 1,
-            )),
-            None => Vec3::default(),
-        };
+        return material
+            .scatter(ray, &hit, rng)
+            .map(|scattered| {
+                scattered.attenuation.component_mul(&trace_ray(
+                    scene,
+                    &Ray {
+                        origin: hit.point,
+                        dir: scattered.dir,
+                    },
+                    rng,
+                    depth - 1,
+                ))
+            })
+            .unwrap_or_default();
     }
 
     let t = 0.5 * (ray.dir[1] + 1.);
