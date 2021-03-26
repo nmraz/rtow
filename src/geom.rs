@@ -19,13 +19,26 @@ impl Sphere {
 impl Geom for Sphere {
     fn hit(&self, ray: &Ray) -> Option<f64> {
         let oc = ray.origin - self.center;
-        let half_b = oc.dot(&ray.dir);
+        let b = oc.dot(&ray.dir);
         let c = oc.norm_squared() - self.radius * self.radius;
 
-        let discriminant = half_b * half_b - c;
+        let discriminant = b * b - c;
 
-        if discriminant >= 0. {
-            Some(-half_b - discriminant.sqrt())
+        if discriminant < 0. {
+            return None;
+        }
+
+        let radical = discriminant.sqrt();
+
+        let t1 = -b - radical;
+        let t2 = -b + radical;
+
+        // Find the intersection nearest to the origin (minimal `t`), but never report
+        // intersections behind the origin (negative `t`).
+        if t1 > 0. {
+            Some(t1)
+        } else if t2 > 0. {
+            Some(t2)
         } else {
             None
         }
