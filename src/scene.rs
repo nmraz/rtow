@@ -36,12 +36,15 @@ impl HitInfo {
 }
 
 pub struct Primitive {
-    pub geom: Box<dyn Geom>,
-    pub material: Arc<dyn Material>,
+    pub geom: Box<dyn Geom + Sync>,
+    pub material: Arc<dyn Material + Send + Sync>,
 }
 
 impl Primitive {
-    pub fn new(geom: impl Geom + 'static, material: Arc<dyn Material>) -> Self {
+    pub fn new(
+        geom: impl Geom + Sync + 'static,
+        material: Arc<dyn Material + Send + Sync>,
+    ) -> Self {
         Self {
             geom: Box::new(geom),
             material,

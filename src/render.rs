@@ -2,6 +2,7 @@ use std::convert::TryInto;
 use std::iter;
 
 use rand::{Rng, RngCore};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::math::{Ray, Vec3};
 use crate::scene::Scene;
@@ -74,22 +75,22 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
 
     let max_depth = opts.max_depth.try_into().unwrap();
 
-    let mut rng = rand::thread_rng();
+    buf.par_iter_mut().enumerate().for_each(|(idx, pixel)| {
+        let idx = idx as u32;
 
-    for py in 0..pixel_height {
-        for px in 0..pixel_width {
-            let color = iter::repeat_with(|| {
-                let ray =
-                    camera.cast_ray(px as f64 + rng.gen::<f64>(), py as f64 + rng.gen::<f64>());
-                trace_ray(scene, &ray, &mut rng, max_depth)
-            })
-            .take(opts.samples_per_pixel as usize)
-            .sum::<Vec3>()
-                / (opts.samples_per_pixel as f64);
+        let px = idx % pixel_width;
+        let py = idx / pixel_width;
 
-            buf[(py * pixel_width + px) as usize] = color;
-        }
-    }
+        let mut rng = rand::thread_rng();
+
+        *pixel = iter::repeat_with(|| {
+            let ray = camera.cast_ray(px as f64 + rng.gen::<f64>(), py as f64 + rng.gen::<f64>());
+            trace_ray(scene, &ray, &mut rng, max_depth)
+        })
+        .take(opts.samples_per_pixel as usize)
+        .sum::<Vec3>()
+            / (opts.samples_per_pixel as f64);
+    });
 }
 
 fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec3 {
