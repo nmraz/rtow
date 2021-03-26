@@ -77,7 +77,7 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
             let color = iter::repeat_with(|| {
                 let ray =
                     camera.cast_ray(px as f64 + rng.gen::<f64>(), py as f64 + rng.gen::<f64>());
-                ray_color(&ray, scene)
+                trace_ray(scene, &ray)
             })
             .take(opts.samples_per_pixel as usize)
             .sum::<Vec3>()
@@ -88,7 +88,7 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
     }
 }
 
-fn ray_color(ray: &Ray, scene: &Scene) -> Vec3 {
+fn trace_ray(scene: &Scene, ray: &Ray) -> Vec3 {
     if let Some(info) = scene.hit(ray) {
         return 0.5 * (info.normal.as_ref() + Vec3::new(1., 1., 1.));
     }
