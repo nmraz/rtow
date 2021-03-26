@@ -4,7 +4,7 @@ use std::io::BufWriter;
 use std::sync::Arc;
 
 use geom::Sphere;
-use material::Diffuse;
+use material::{Diffuse, Metal};
 use math::Vec3;
 use render::{Camera, RenderOptions};
 use scene::{Primitive, Scene};
@@ -17,15 +17,22 @@ mod render;
 mod scene;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let gray_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
-    let pink_material = Arc::new(Diffuse::new(Vec3::new(1., 0.2, 0.2)));
+    let ground_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
+    let center_material = Arc::new(Diffuse::new(Vec3::new(1., 0.2, 0.2)));
+    let left_material = Arc::new(Metal::new(Vec3::new(0.8, 0.9, 0.8), 0.95));
+    let right_material = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.4));
 
     let scene = Scene::with_primitives(vec![
-        Primitive::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5), pink_material),
-        Primitive::new(Sphere::new(Vec3::new(0., -100.5, -1.), 100.), gray_material),
+        Primitive::new(Sphere::new(Vec3::new(0., 0., -1.), 0.5), center_material),
+        Primitive::new(Sphere::new(Vec3::new(-1., 0., -1.), 0.5), left_material),
+        Primitive::new(Sphere::new(Vec3::new(1., 0., -1.), 0.5), right_material),
+        Primitive::new(
+            Sphere::new(Vec3::new(0., -100.5, -1.), 100.),
+            ground_material,
+        ),
     ]);
 
-    let camera = Camera::new(1820, 1080);
+    let camera = Camera::new(960, 540);
 
     let opts = RenderOptions {
         samples_per_pixel: 200,
