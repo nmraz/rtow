@@ -99,7 +99,7 @@ fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec
 
     if let Some((hit, material)) = scene.hit(ray) {
         return material
-            .scatter(ray, &hit, rng)
+            .scatter(ray.dir, &hit, rng)
             .map(|scattered| {
                 scattered.attenuation.component_mul(&trace_ray(
                     scene,
