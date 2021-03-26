@@ -1,3 +1,7 @@
+use std::iter;
+
+use rand::Rng;
+
 use crate::math::{Ray, Vec3};
 use crate::scene::Scene;
 
@@ -56,16 +60,30 @@ impl Camera {
     }
 }
 
-pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera) {
+pub struct RenderOptions {
+    pub samples_per_pixel: u32,
+}
+
+pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &RenderOptions) {
     let pixel_height = camera.pixel_height();
     let pixel_width = camera.pixel_width();
 
     assert_eq!(buf.len(), (pixel_width * pixel_height) as usize);
 
-    for j in 0..pixel_height {
-        for i in 0..pixel_width {
-            let ray = camera.cast_ray(i as f64, j as f64);
-            buf[(j * pixel_width + i) as usize] = ray_color(&ray, scene);
+    let mut rng = rand::thread_rng();
+
+    for py in 0..pixel_height {
+        for px in 0..pixel_width {
+            let color = iter::repeat_with(|| {
+                let ray =
+                    camera.cast_ray(px as f64 + rng.gen::<f64>(), py as f64 + rng.gen::<f64>());
+                ray_color(&ray, scene)
+            })
+            .take(opts.samples_per_pixel as usize)
+            .sum::<Vec3>()
+                / (opts.samples_per_pixel as f64);
+
+            buf[(py * pixel_width + px) as usize] = color;
         }
     }
 }

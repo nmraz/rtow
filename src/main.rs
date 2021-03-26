@@ -4,7 +4,7 @@ use std::io::BufWriter;
 
 use geom::Sphere;
 use math::Vec3;
-use render::Camera;
+use render::{Camera, RenderOptions};
 use scene::Scene;
 
 mod geom;
@@ -21,8 +21,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let camera = Camera::new(400, 225);
 
+    let opts = RenderOptions {
+        samples_per_pixel: 100,
+    };
+
     let mut pixels = vec![Vec3::default(); (camera.pixel_width() * camera.pixel_height()) as usize];
-    render::render_to(&mut pixels, &scene, &camera);
+    render::render_to(&mut pixels, &scene, &camera, &opts);
 
     let raw_pixels = img::pixels_to_raw_rgb(&pixels);
 
