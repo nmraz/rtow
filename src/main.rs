@@ -2,8 +2,10 @@ use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
 
+use geom::{Geom, Sphere};
 use math::{Ray, Unit3, Vec3};
 
+mod geom;
 mod img;
 mod math;
 
@@ -48,27 +50,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn ray_color(ray: &Ray) -> Vec3 {
-    let center = Vec3::new(0., 0., -1.);
+    let sphere = Sphere::new(Vec3::new(0., 0., -1.), 0.5);
 
-    if let Some(t) = hit_sphere(center, 0.5, ray) {
-        let n = (ray.at(t) - center).normalize();
+    if let Some(t) = sphere.hit(ray) {
+        let n = (ray.at(t) - sphere.center).normalize();
         return 0.5 * (n + Vec3::new(1., 1., 1.));
     }
 
     let t = 0.5 * (ray.dir[1] + 1.);
     (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
-}
-
-fn hit_sphere(center: Vec3, radius: f64, ray: &Ray) -> Option<f64> {
-    let oc = ray.origin - center;
-    let half_b = oc.dot(&ray.dir);
-    let c = oc.norm_squared() - radius * radius;
-
-    let discriminant = half_b * half_b - c;
-
-    if discriminant >= 0. {
-        Some(-half_b - discriminant.sqrt())
-    } else {
-        None
-    }
 }
