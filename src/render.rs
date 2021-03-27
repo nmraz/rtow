@@ -11,6 +11,10 @@ pub struct CameraOptions {
     pub pixel_width: u32,
     pub pixel_height: u32,
     pub vert_fov: f64,
+
+    pub origin: Vec3,
+    pub look_at: Vec3,
+    pub vup: Vec3,
 }
 
 pub struct Camera {
@@ -32,14 +36,17 @@ impl Camera {
         let viewport_height = 2. * focal_length * (opts.vert_fov * f64::consts::PI / 360.).tan();
         let viewport_width = aspect_ratio * viewport_height;
 
-        let origin = Vec3::default();
+        // Note: right-handed coordinate system
+        let w = (opts.origin - opts.look_at).normalize();
+        let u = opts.vup.cross(&w).normalize();
+        let v = w.cross(&u);
 
-        let horiz = Vec3::new(viewport_width, 0., 0.);
-        let vert = Vec3::new(0., viewport_height, 0.);
-        let bottom_left = origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
+        let horiz = viewport_width * u;
+        let vert = viewport_height * v;
+        let bottom_left = opts.origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
 
         Self {
-            origin,
+            origin: opts.origin,
             bottom_left,
             horiz,
             vert,

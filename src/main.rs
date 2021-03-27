@@ -56,7 +56,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         pixel_width: args.width,
         pixel_height: args.height,
         vert_fov: args.vfov,
+
+        origin: Vec3::default(),
+        look_at: Vec3::new(0., 0., -1.),
+        vup: Vec3::new(0., 1., 0.),
     };
+
     let camera = Camera::new(&camera_opts);
 
     let opts = RenderOptions {
