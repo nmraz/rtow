@@ -1,11 +1,17 @@
 use std::convert::TryInto;
-use std::iter;
+use std::{f64, iter};
 
 use rand::{Rng, RngCore};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::math::{Ray, Vec3};
 use crate::scene::Scene;
+
+pub struct CameraOptions {
+    pub pixel_width: u32,
+    pub pixel_height: u32,
+    pub vert_fov: f64,
+}
 
 pub struct Camera {
     origin: Vec3,
@@ -19,12 +25,12 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(pixel_width: u32, pixel_height: u32) -> Self {
-        let aspect_ratio = pixel_width as f64 / pixel_height as f64;
-
-        let viewport_height = 2.;
-        let viewport_width = aspect_ratio * viewport_height;
+    pub fn new(opts: &CameraOptions) -> Self {
+        let aspect_ratio = opts.pixel_width as f64 / opts.pixel_height as f64;
         let focal_length = 1.;
+
+        let viewport_height = 2. * focal_length * (opts.vert_fov * f64::consts::PI / 360.).tan();
+        let viewport_width = aspect_ratio * viewport_height;
 
         let origin = Vec3::default();
 
@@ -38,8 +44,8 @@ impl Camera {
             horiz,
             vert,
 
-            pixel_width,
-            pixel_height,
+            pixel_width: opts.pixel_width,
+            pixel_height: opts.pixel_height,
         }
     }
 

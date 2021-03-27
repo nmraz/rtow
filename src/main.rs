@@ -10,7 +10,7 @@ use structopt::StructOpt;
 use geom::Sphere;
 use material::{Dielectric, Diffuse, Metal};
 use math::Vec3;
-use render::{Camera, RenderOptions};
+use render::{Camera, CameraOptions, RenderOptions};
 use scene::{Primitive, Scene};
 
 mod geom;
@@ -30,6 +30,10 @@ struct CliArgs {
     #[structopt(long, short)]
     pub height: u32,
 
+    /// Vertical field of view, in degrees
+    #[structopt(long, default_value = "90")]
+    pub vfov: f64,
+
     /// Maximum bounce depth
     #[structopt(long, default_value = "10")]
     pub max_depth: u32,
@@ -47,7 +51,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = CliArgs::from_args();
 
     let scene = build_scene();
-    let camera = Camera::new(args.width, args.height);
+
+    let camera_opts = CameraOptions {
+        pixel_width: args.width,
+        pixel_height: args.height,
+        vert_fov: args.vfov,
+    };
+    let camera = Camera::new(&camera_opts);
 
     let opts = RenderOptions {
         samples_per_pixel: args.samples_per_pixel,
