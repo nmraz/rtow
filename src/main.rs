@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pixel_height: args.height,
         vert_fov: args.vfov,
 
-        origin: Vec3::default(),
+        origin: Vec3::new(-0.5, 0., 0.),
         look_at: Vec3::new(0., 0., -1.),
         vup: Vec3::new(0., 1., 0.),
     };
