@@ -73,12 +73,10 @@ impl Material for Metal {
         );
 
         if dir.dot(&hit.normal) > 0. {
-            let cos_theta = hit.normal.dot(&dir);
-
-            let attenuation =
-                self.albedo + (1. - cos_theta).powi(5) * (Vec3::from_element(1.) - self.albedo);
-
-            Some(ScatteredRay { dir, attenuation })
+            Some(ScatteredRay {
+                dir,
+                attenuation: self.albedo,
+            })
         } else {
             None
         }
