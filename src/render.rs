@@ -2,6 +2,7 @@ use std::convert::TryInto;
 use std::{f64, iter};
 
 use rand::{Rng, RngCore};
+use rand_distr::{Distribution, UnitDisc};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::math::{Ray, Vec3};
@@ -10,7 +11,9 @@ use crate::scene::Scene;
 pub struct CameraOptions {
     pub pixel_width: u32,
     pub pixel_height: u32,
+
     pub vert_fov: f64,
+    pub aperture: f64,
 
     pub origin: Vec3,
     pub look_at: Vec3,
@@ -21,47 +24,74 @@ pub struct Camera {
     origin: Vec3,
     bottom_left: Vec3,
 
+    u: Vec3,
+    v: Vec3,
     horiz: Vec3,
     vert: Vec3,
 
+    lens_radius: f64,
+
     pixel_width: u32,
     pixel_height: u32,
+
+    inv_width: f64,
+    inv_height: f64,
 }
 
 impl Camera {
     pub fn new(opts: &CameraOptions) -> Self {
         let aspect_ratio = opts.pixel_width as f64 / opts.pixel_height as f64;
-        let focal_length = 1.;
 
-        let viewport_height = 2. * focal_length * (opts.vert_fov * f64::consts::PI / 360.).tan();
+        let viewport_height = 2. * (opts.vert_fov * f64::consts::PI / 360.).tan();
         let viewport_width = aspect_ratio * viewport_height;
 
+        let (w, focus_dist) = {
+            let mut w = opts.origin - opts.look_at;
+            let dist = w.normalize_mut();
+
+            (w, dist)
+        };
+
         // Note: right-handed coordinate system
-        let w = (opts.origin - opts.look_at).normalize();
         let u = opts.vup.cross(&w).normalize();
         let v = w.cross(&u);
 
-        let horiz = viewport_width * u;
-        let vert = viewport_height * v;
-        let bottom_left = opts.origin - horiz / 2. - vert / 2. - Vec3::new(0., 0., focal_length);
+        let horiz = focus_dist * viewport_width * u;
+        let vert = focus_dist * viewport_height * v;
+        let bottom_left = opts.origin - horiz / 2. - vert / 2. - focus_dist * w;
 
         Self {
             origin: opts.origin,
             bottom_left,
+
+            u,
+            v,
             horiz,
             vert,
 
+            lens_radius: opts.aperture / 2.,
+
             pixel_width: opts.pixel_width,
             pixel_height: opts.pixel_height,
+
+            inv_width: 1. / opts.pixel_width as f64,
+            inv_height: 1. / opts.pixel_height as f64,
         }
     }
 
-    pub fn cast_ray(&self, pixel_x: f64, pixel_y: f64) -> Ray {
-        let u = pixel_x / self.pixel_width as f64;
-        let v = 1. - pixel_y / self.pixel_height as f64;
+    pub fn cast_ray(&self, pixel_x: f64, pixel_y: f64, rng: &mut dyn RngCore) -> Ray {
+        let dof_offset = if self.lens_radius > 0. {
+            let [rdx, rdy]: [f64; 2] = UnitDisc.sample(rng);
+            self.lens_radius * (rdx * self.u + rdy * self.v)
+        } else {
+            Vec3::default()
+        };
+
+        let u = pixel_x * self.inv_width;
+        let v = 1. - pixel_y * self.inv_height;
 
         Ray::pointing_through(
-            self.origin,
+            self.origin + dof_offset,
             self.bottom_left + u * self.horiz + v * self.vert,
         )
     }
@@ -97,7 +127,11 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
         let mut rng = rand::thread_rng();
 
         *pixel = iter::repeat_with(|| {
-            let ray = camera.cast_ray(px as f64 + rng.gen::<f64>(), py as f64 + rng.gen::<f64>());
+            let ray = camera.cast_ray(
+                px as f64 + rng.gen::<f64>(),
+                py as f64 + rng.gen::<f64>(),
+                &mut rng,
+            );
             trace_ray(scene, &ray, &mut rng, max_depth)
         })
         .take(opts.samples_per_pixel as usize)

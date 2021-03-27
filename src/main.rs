@@ -34,6 +34,10 @@ struct CliArgs {
     #[structopt(long, default_value = "90")]
     pub vfov: f64,
 
+    /// Width of the camera aperture. Specify 0 for a pinhole camera.
+    #[structopt(long, default_value = "0")]
+    pub aperture: f64,
+
     /// Maximum bounce depth
     #[structopt(long, default_value = "10")]
     pub max_depth: u32,
@@ -55,10 +59,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let camera_opts = CameraOptions {
         pixel_width: args.width,
         pixel_height: args.height,
-        vert_fov: args.vfov,
 
-        origin: Vec3::new(-0.5, 0., 0.),
-        look_at: Vec3::new(0., 0., -1.),
+        vert_fov: args.vfov,
+        aperture: args.aperture,
+
+        origin: Vec3::new(0., 0., 0.),
+        look_at: Vec3::new(0., 0., -0.5),
         vup: Vec3::new(0., 1., 0.),
     };
 
