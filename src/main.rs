@@ -108,15 +108,12 @@ fn build_scene() -> Scene {
     let ground_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
     let pink_material = Arc::new(Diffuse::new(Vec3::new(1., 0.2, 0.2)));
     let gold_material = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.95));
-    let diamond_material = Arc::new(Dielectric::new(2.4));
+    let water_material = Arc::new(Dielectric::new(1.333));
 
     Scene::with_primitives(vec![
         Primitive::new(Sphere::new(Vec3::new(-0.5, 0., -1.), 0.5), pink_material),
         Primitive::new(Sphere::new(Vec3::new(0.5, 0., -1.), 0.5), gold_material),
-        Primitive::new(
-            Sphere::new(Vec3::new(0., -0.15, -0.5), 0.1),
-            diamond_material,
-        ),
+        Primitive::new(Sphere::new(Vec3::new(0., -0.15, -0.5), 0.1), water_material),
         Primitive::new(
             Sphere::new(Vec3::new(0., -100.5, -1.), 100.),
             ground_material,
