@@ -31,7 +31,7 @@ struct CliArgs {
     pub height: u32,
 
     /// Vertical field of view, in degrees
-    #[structopt(long, default_value = "90")]
+    #[structopt(long, default_value = "50")]
     pub vfov: f64,
 
     /// Width of the camera aperture. Specify 0 for a pinhole camera.
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         vert_fov: args.vfov,
         aperture: args.aperture,
 
-        origin: Vec3::new(0., 0., 0.),
+        origin: Vec3::new(0., 0., 0.5),
         look_at: Vec3::new(0., 0., -0.5),
         vup: Vec3::new(0., 1., 0.),
     };
