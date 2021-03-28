@@ -1,5 +1,56 @@
 use crate::math::{Ray, Unit3, Vec3, EPSILON};
 
+#[derive(Debug, Clone, Copy)]
+pub struct Aabb {
+    pub min_point: Vec3,
+    pub max_point: Vec3,
+}
+
+impl Aabb {
+    pub fn new(a: Vec3, b: Vec3) -> Self {
+        Self {
+            min_point: a.inf(&b),
+            max_point: a.sup(&b),
+        }
+    }
+
+    pub fn union(&self, other: &Self) -> Self {
+        Self {
+            min_point: self.min_point.inf(&other.min_point),
+            max_point: self.max_point.sup(&other.max_point),
+        }
+    }
+
+    pub fn intersects(&self, ray: &Ray) -> bool {
+        let mut t_min: f64 = 0.;
+        let mut t_max: f64 = f64::INFINITY;
+
+        for i in 0..3 {
+            let inv_d = 1. / ray.dir[i];
+
+            let (t0, t1) = {
+                let t0 = (self.min_point[i] - ray.origin[i]) * inv_d;
+                let t1 = (self.max_point[i] - ray.origin[i]) * inv_d;
+
+                if inv_d >= 0. {
+                    (t0, t1)
+                } else {
+                    (t1, t0)
+                }
+            };
+
+            t_min = t_min.max(t0);
+            t_max = t_max.min(t1);
+
+            if t_max <= t_min {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 pub trait Geom {
     fn hit(&self, ray: &Ray) -> Option<f64>;
     fn outward_normal_at(&self, point: Vec3) -> Unit3;
