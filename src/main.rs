@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let elapsed = Instant::now() - start_time;
     println!("Rendered in {}s", elapsed.as_secs_f64());
 
-    let raw_pixels = img::pixels_to_raw_rgb(&pixels);
+    let raw_pixels = img::pixels_to_srgb(&pixels);
     let mut writer = BufWriter::new(File::create(args.output_filename)?);
     img::write_png(
         &mut writer,

@@ -4,15 +4,23 @@ use png::{BitDepth, ColorType, Encoder, EncodingError};
 
 use crate::math::Vec3;
 
-fn channel_to_raw(channel: f64) -> u8 {
-    (channel.powf(1. / 2.2).clamp(0., 1.) * 255.) as u8
+fn gamma_correct(v: f64) -> f64 {
+    if v <= 0.0031308 {
+        12.92 * v
+    } else {
+        1.055 * v.powf(1. / 2.4) - 0.055
+    }
 }
 
-pub fn pixels_to_raw_rgb(pixels: &[Vec3]) -> Vec<u8> {
+fn channel_to_raw(v: f64) -> u8 {
+    (gamma_correct(v) * 255. + 0.5).clamp(0., 255.) as u8
+}
+
+pub fn pixels_to_srgb(pixels: &[Vec3]) -> Vec<u8> {
     pixels
         .iter()
         .flatten()
-        .map(|&val| channel_to_raw(val))
+        .map(|&v| channel_to_raw(v))
         .collect()
 }
 
