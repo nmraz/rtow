@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::{f64, iter};
 
 use rand::{Rng, RngCore};
@@ -116,8 +115,6 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
 
     assert_eq!(buf.len(), (pixel_width * pixel_height) as usize);
 
-    let max_depth = opts.max_depth.try_into().unwrap();
-
     buf.par_iter_mut().enumerate().for_each(|(idx, pixel)| {
         let idx = idx as u32;
 
@@ -132,7 +129,7 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
                 py as f64 + rng.gen::<f64>(),
                 &mut rng,
             );
-            trace_ray(scene, &ray, &mut rng, max_depth)
+            trace_ray(scene, ray, &mut rng, opts.max_depth)
         })
         .take(opts.samples_per_pixel as usize)
         .sum::<Vec3>()
@@ -140,28 +137,31 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
     });
 }
 
-fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: i32) -> Vec3 {
-    if depth <= 0 {
-        return Vec3::default();
+fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32) -> Vec3 {
+    let mut color = Vec3::from_element(1.);
+
+    for _ in 0..max_depth {
+        let (hit, material) = match scene.hit(&ray) {
+            Some(data) => data,
+            None => return color.component_mul(&sample_background(&ray)),
+        };
+
+        let scattered = match material.scatter(ray.dir, &hit, rng) {
+            Some(scattered) => scattered,
+            None => return Vec3::default(),
+        };
+
+        color.component_mul_assign(&scattered.attenuation);
+        ray = Ray {
+            origin: hit.point,
+            dir: scattered.dir,
+        }
     }
 
-    if let Some((hit, material)) = scene.hit(ray) {
-        return material
-            .scatter(ray.dir, &hit, rng)
-            .map(|scattered| {
-                scattered.attenuation.component_mul(&trace_ray(
-                    scene,
-                    &Ray {
-                        origin: hit.point,
-                        dir: scattered.dir,
-                    },
-                    rng,
-                    depth - 1,
-                ))
-            })
-            .unwrap_or_default();
-    }
+    Vec3::default()
+}
 
+fn sample_background(ray: &Ray) -> Vec3 {
     let t = 0.5 * (ray.dir[1] + 1.);
     (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
 }
