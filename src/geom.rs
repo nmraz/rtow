@@ -52,6 +52,7 @@ impl Aabb {
 }
 
 pub trait Geom {
+    fn aabb(&self) -> Aabb;
     fn hit(&self, ray: &Ray) -> Option<f64>;
     fn outward_normal_at(&self, point: Vec3) -> Unit3;
 }
@@ -68,6 +69,11 @@ impl Sphere {
 }
 
 impl Geom for Sphere {
+    fn aabb(&self) -> Aabb {
+        let radius_vec = Vec3::from_element(self.radius);
+        Aabb::new(self.center - radius_vec, self.center + radius_vec)
+    }
+
     fn hit(&self, ray: &Ray) -> Option<f64> {
         let oc = ray.origin - self.center;
         let b = oc.dot(&ray.dir);
