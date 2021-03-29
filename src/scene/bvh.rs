@@ -1,0 +1,117 @@
+use crate::math::{Aabb, Vec3};
+
+use super::Primitive;
+
+enum BvhNodeData {
+    Leaf {
+        prim: Primitive,
+    },
+    Interior {
+        left: Option<Box<BvhNode>>,
+        right: Option<Box<BvhNode>>,
+    },
+}
+
+pub struct BvhNode {
+    bounds: Aabb,
+    data: BvhNodeData,
+}
+
+impl BvhNode {
+    pub fn fold<'a>(
+        &'a self,
+        mut pred: impl FnMut(&Aabb) -> bool,
+        mut f: impl FnMut(&'a Primitive),
+    ) {
+        if !pred(&self.bounds) {
+            return;
+        }
+
+        match &self.data {
+            BvhNodeData::Leaf { prim } => f(prim),
+            BvhNodeData::Interior { left, right } => {
+                if let Some(left) = left {
+                    left.fold(&mut pred, &mut f);
+                }
+
+                if let Some(right) = right {
+                    right.fold(&mut pred, &mut f);
+                }
+            }
+        }
+    }
+}
+
+pub fn build(primitives: impl IntoIterator<Item = Primitive>) -> Option<Box<BvhNode>> {
+    do_build(
+        primitives
+            .into_iter()
+            .map(|prim| {
+                let bounds = prim.geom.bounds();
+
+                TaggedPrimitive {
+                    prim,
+                    bounds,
+                    centroid: (bounds.min_point + bounds.max_point) / 2.,
+                }
+            })
+            .collect(),
+    )
+}
+
+struct TaggedPrimitive {
+    prim: Primitive,
+    bounds: Aabb,
+    centroid: Vec3,
+}
+
+fn do_build(mut tagged_primitives: Vec<TaggedPrimitive>) -> Option<Box<BvhNode>> {
+    if tagged_primitives.is_empty() {
+        return None;
+    }
+
+    if tagged_primitives.len() == 1 {
+        let first = tagged_primitives.pop().unwrap();
+
+        return Some(Box::new(BvhNode {
+            bounds: first.bounds,
+            data: BvhNodeData::Leaf { prim: first.prim },
+        }));
+    }
+
+    let bounds = tagged_primitives[1..]
+        .iter()
+        .fold(tagged_primitives[0].bounds, |aabb, next| {
+            aabb.union(&next.bounds)
+        });
+
+    // Partition the boxes by centroid values, using the axis along which the extent spanned by the
+    // centroids is the longest.
+
+    let centroid_bounds = tagged_primitives[1..].iter().fold(
+        Aabb::at_point(tagged_primitives[0].centroid),
+        |aabb, next| aabb.extend(next.centroid),
+    );
+
+    let longest_axis = (centroid_bounds.max_point - centroid_bounds.min_point).imax();
+    let mid = tagged_primitives.len() / 2;
+
+    tagged_primitives.select_nth_unstable_by(mid, |tp1, tp2| {
+        tp1.centroid[longest_axis]
+            .partial_cmp(&tp2.centroid[longest_axis])
+            .unwrap()
+    });
+
+    let (left, right) = {
+        let right = tagged_primitives.split_off(mid);
+        (tagged_primitives, right)
+    };
+
+    Some(Box::new(BvhNode {
+        bounds,
+        data: BvhNodeData::Interior {
+            left: do_build(left),
+            right: do_build(right),
+        },
+    }))
+}

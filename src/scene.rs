@@ -4,6 +4,8 @@ use crate::geom::Geom;
 use crate::material::Material;
 use crate::math::{Ray, Unit3, Vec3};
 
+mod bvh;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HitSide {
     Inside,
