@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use rand::Rng;
+use rand::{Rng, RngCore, SeedableRng};
+use rand_pcg::Pcg64;
 use structopt::StructOpt;
 
 use geom::Sphere;
@@ -31,6 +32,10 @@ struct CliArgs {
     #[structopt(long, short)]
     pub height: u32,
 
+    /// Seed to use when generating the scene. If this is not provided, a random seed will be used.
+    #[structopt(long)]
+    pub scene_seed: Option<u64>,
+
     /// Vertical field of view, in degrees
     #[structopt(long, default_value = "50")]
     pub vfov: f64,
@@ -55,7 +60,14 @@ struct CliArgs {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = CliArgs::from_args();
 
-    let scene = build_scene();
+    let scene_seed = args
+        .scene_seed
+        .unwrap_or_else(|| rand::thread_rng().next_u64());
+
+    println!("Scene seed: {}", scene_seed);
+
+    let mut scene_rng = Pcg64::seed_from_u64(scene_seed);
+    let scene = build_scene(&mut scene_rng);
 
     let camera_opts = CameraOptions {
         pixel_width: args.width,
@@ -105,7 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn build_scene() -> Scene {
+fn build_scene(rng: &mut impl Rng) -> Scene {
     const RANGE: i32 = 11;
 
     let ground_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
@@ -129,8 +141,6 @@ fn build_scene() -> Scene {
             Arc::new(Metal::new(Vec3::new(0.5, 0.6, 0.7), 1.)),
         ),
     ];
-
-    let mut rng = rand::thread_rng();
 
     for a in -RANGE..RANGE {
         for b in -RANGE..RANGE {
