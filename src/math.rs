@@ -63,10 +63,7 @@ impl Aabb {
         (self.min_point + self.max_point) / 2.
     }
 
-    pub fn hit(&self, ray: &Ray) -> bool {
-        let mut t_min: f64 = 0.;
-        let mut t_max: f64 = f64::INFINITY;
-
+    pub fn hit(&self, ray: &Ray, mut t_min: f64, mut t_max: f64) -> bool {
         for i in 0..3 {
             let inv_d = 1. / ray.dir[i];
 

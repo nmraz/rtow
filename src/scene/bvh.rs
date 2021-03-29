@@ -1,4 +1,4 @@
-use crate::math::{Aabb, Vec3};
+use crate::math::{Aabb, Ray, Vec3, EPSILON};
 
 use super::Primitive;
 
@@ -18,24 +18,23 @@ pub struct BvhNode {
 }
 
 impl BvhNode {
-    pub fn fold<'a>(
-        &'a self,
-        mut pred: impl FnMut(&Aabb) -> bool,
-        mut f: impl FnMut(&'a Primitive),
-    ) {
-        if !pred(&self.bounds) {
-            return;
+    pub fn hit(&self, ray: &Ray, t_max: f64) -> Option<(&Primitive, f64)> {
+        if !self.bounds.hit(ray, EPSILON, t_max) {
+            return None;
         }
 
         match &self.data {
-            BvhNodeData::Leaf { prim } => f(prim),
+            BvhNodeData::Leaf { prim } => prim.geom.hit(ray).map(|t| (prim, t)),
             BvhNodeData::Interior { left, right } => {
-                if let Some(left) = left {
-                    left.fold(&mut pred, &mut f);
-                }
+                let left_hit = left.as_ref().and_then(|left| left.hit(ray, t_max));
+                let right_hit = right
+                    .as_ref()
+                    .and_then(|right| right.hit(ray, left_hit.map_or(t_max, |(_prim, t)| t)));
 
-                if let Some(right) = right {
-                    right.fold(&mut pred, &mut f);
+                match (left_hit, right_hit) {
+                    (None, Some(hit)) => Some(hit),
+                    (Some((_priml, tl)), Some((primr, tr))) if tr < tl => Some((primr, tr)),
+                    _ => left_hit,
                 }
             }
         }

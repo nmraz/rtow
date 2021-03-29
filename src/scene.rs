@@ -4,6 +4,8 @@ use crate::geom::Geom;
 use crate::material::Material;
 use crate::math::{Ray, Unit3, Vec3};
 
+use self::bvh::BvhNode;
+
 mod bvh;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,25 +57,18 @@ impl Primitive {
 }
 
 pub struct Scene {
-    primitives: Vec<Primitive>,
+    primitives: Option<Box<BvhNode>>,
 }
 
 impl Scene {
     pub fn with_primitives(primitives: Vec<Primitive>) -> Self {
-        Self { primitives }
+        Self {
+            primitives: bvh::build(primitives),
+        }
     }
 
     pub fn hit(&self, ray: &Ray) -> Option<(HitInfo, &dyn Material)> {
-        let (prim, t) = self
-            .primitives
-            .iter()
-            .map(|prim| (prim, prim.geom.hit(ray)))
-            .fold(None, |nearest, (prim, t)| match (nearest, t) {
-                (None, Some(t)) => Some((prim, t)),
-                (Some((_, nearest_t)), Some(t)) if t < nearest_t => Some((prim, t)),
-                _ => nearest,
-            })?;
-
+        let (prim, t) = self.primitives.as_ref()?.hit(ray, f64::INFINITY)?;
         Some((HitInfo::from_geom_ray(&*prim.geom, ray, t), &*prim.material))
     }
 }
