@@ -7,8 +7,8 @@ enum BvhNodeData {
         prim: Primitive,
     },
     Interior {
-        left: Option<Box<BvhNode>>,
-        right: Option<Box<BvhNode>>,
+        left: Box<BvhNode>,
+        right: Box<BvhNode>,
     },
 }
 
@@ -26,10 +26,8 @@ impl BvhNode {
         match &self.data {
             BvhNodeData::Leaf { prim } => prim.geom.hit(ray).map(|t| (prim, t)),
             BvhNodeData::Interior { left, right } => {
-                let left_hit = left.as_ref().and_then(|left| left.hit(ray, t_max));
-                let right_hit = right
-                    .as_ref()
-                    .and_then(|right| right.hit(ray, left_hit.map_or(t_max, |(_prim, t)| t)));
+                let left_hit = left.hit(ray, t_max);
+                let right_hit = right.hit(ray, left_hit.map_or(t_max, |(_prim, t)| t));
 
                 match (left_hit, right_hit) {
                     (None, Some(hit)) => Some(hit),
@@ -109,8 +107,8 @@ fn do_build(mut tagged_primitives: Vec<TaggedPrimitive>) -> Option<Box<BvhNode>>
     Some(Box::new(BvhNode {
         bounds,
         data: BvhNodeData::Interior {
-            left: do_build(left),
-            right: do_build(right),
+            left: do_build(left).unwrap(),
+            right: do_build(right).unwrap(),
         },
     }))
 }
