@@ -51,7 +51,7 @@ pub fn build(primitives: impl IntoIterator<Item = Primitive>) -> Option<Box<BvhN
                 TaggedPrimitive {
                     prim,
                     bounds,
-                    centroid: (bounds.min_point + bounds.max_point) / 2.,
+                    centroid: bounds.centroid(),
                 }
             })
             .collect(),
