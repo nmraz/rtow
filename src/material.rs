@@ -72,10 +72,12 @@ impl Material for Metal {
             reflected + (1. - self.gloss) * Vec3::from(UnitSphere.sample(rng)),
         );
 
-        if dir.dot(&hit.normal) > 0. {
+        let cos_theta = dir.dot(&hit.normal);
+
+        if cos_theta > 0. {
             Some(ScatteredRay {
                 dir,
-                attenuation: self.albedo,
+                attenuation: self.albedo.map(|r0| schlick_reflectance(r0, cos_theta)),
             })
         } else {
             None
@@ -85,6 +87,10 @@ impl Material for Metal {
 
 fn reflect(incoming: Vec3, n: Unit3) -> Vec3 {
     incoming - 2. * incoming.dot(&n) * n.as_ref()
+}
+
+fn schlick_reflectance(r0: f64, cos_theta: f64) -> f64 {
+    r0 + (1. - r0) * (1. - cos_theta).powi(5)
 }
 
 pub struct Dielectric {
@@ -113,7 +119,7 @@ impl Material for Dielectric {
         let sin_theta = (1. - cos_theta * cos_theta).sqrt();
 
         let dir = if refractive_ratio * sin_theta > 1.
-            || rng.gen::<f64>() < schlick_reflectance(cos_theta, refractive_ratio)
+            || rng.gen::<f64>() < dielectric_reflectance(cos_theta, refractive_ratio)
         {
             reflect(*incoming, hit.normal)
         } else {
@@ -130,7 +136,7 @@ impl Material for Dielectric {
     }
 }
 
-fn schlick_reflectance(cos_theta: f64, refractive_ratio: f64) -> f64 {
+fn dielectric_reflectance(cos_theta: f64, refractive_ratio: f64) -> f64 {
     let r0 = ((1. - refractive_ratio) / (1. + refractive_ratio)).powi(2);
-    r0 + (1. - r0) * (1. - cos_theta).powi(5)
+    schlick_reflectance(r0, cos_theta)
 }
