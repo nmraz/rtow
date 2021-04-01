@@ -4,7 +4,7 @@ use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitDisc};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::math::{Ray, Vec3};
+use crate::math::{OrthoNormalBasis, Ray, Unit3, Vec3};
 use crate::scene::Scene;
 
 pub struct CameraOptions {
@@ -146,7 +146,10 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
             None => return color.component_mul(&sample_background(&ray)),
         };
 
-        let scattered = match material.scatter(ray.dir, &hit, rng) {
+        let basis = OrthoNormalBasis::from_w(hit.normal);
+        let incoming = Unit3::new_unchecked(-basis.trans_from_canonical(*ray.dir));
+
+        let scattered = match material.scatter(incoming, hit.side, rng) {
             Some(scattered) => scattered,
             None => return Vec3::default(),
         };
@@ -154,7 +157,7 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
         color.component_mul_assign(&scattered.attenuation);
         ray = Ray {
             origin: hit.point,
-            dir: scattered.dir,
+            dir: Unit3::new_unchecked(basis.trans_to_canonical(*scattered.dir)),
         }
     }
 

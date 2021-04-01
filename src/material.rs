@@ -1,8 +1,9 @@
 use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitSphere};
 
-use crate::math::{Unit3, Vec3, EPSILON};
-use crate::scene::{HitInfo, HitSide};
+use crate::distr::CosWeightedHemisphere;
+use crate::math::{Unit3, Vec3};
+use crate::scene::HitSide;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ScatteredRay {
@@ -14,7 +15,7 @@ pub trait Material {
     fn scatter(
         &self,
         incoming: Unit3,
-        hit: &HitInfo,
+        side: HitSide,
         rng: &mut dyn RngCore,
     ) -> Option<ScatteredRay>;
 }
@@ -33,14 +34,11 @@ impl Material for Diffuse {
     fn scatter(
         &self,
         _incoming: Unit3,
-        hit: &HitInfo,
+        _side: HitSide,
         rng: &mut dyn RngCore,
     ) -> Option<ScatteredRay> {
-        let unit: Vec3 = UnitSphere.sample(rng).into();
-        let dir = hit.normal.as_ref() + unit;
-
         Some(ScatteredRay {
-            dir: Unit3::try_new(dir, EPSILON).unwrap_or(hit.normal),
+            dir: CosWeightedHemisphere.sample(rng),
             attenuation: self.albedo,
         })
     }
@@ -64,15 +62,15 @@ impl Material for Metal {
     fn scatter(
         &self,
         incoming: Unit3,
-        hit: &HitInfo,
+        _side: HitSide,
         rng: &mut dyn RngCore,
     ) -> Option<ScatteredRay> {
-        let reflected = reflect(*incoming, hit.normal);
+        let reflected = reflect_z(*incoming);
         let dir = Unit3::new_normalize(
             reflected + (1. - self.gloss) * Vec3::from(UnitSphere.sample(rng)),
         );
 
-        let cos_theta = dir.dot(&hit.normal);
+        let cos_theta = dir[2];
 
         if cos_theta > 0. {
             Some(ScatteredRay {
@@ -85,8 +83,8 @@ impl Material for Metal {
     }
 }
 
-fn reflect(incoming: Vec3, n: Unit3) -> Vec3 {
-    incoming - 2. * incoming.dot(&n) * n.as_ref()
+fn reflect_z(incoming: Vec3) -> Vec3 {
+    Vec3::new(-incoming[0], -incoming[1], incoming[2])
 }
 
 fn schlick_reflectance(r0: f64, cos_theta: f64) -> f64 {
@@ -107,24 +105,26 @@ impl Material for Dielectric {
     fn scatter(
         &self,
         incoming: Unit3,
-        hit: &HitInfo,
+        side: HitSide,
         rng: &mut dyn RngCore,
     ) -> Option<ScatteredRay> {
-        let refractive_ratio = match hit.side {
+        let refractive_ratio = match side {
             HitSide::Inside => self.refractive_index,
             HitSide::Outside => 1. / self.refractive_index,
         };
 
-        let cos_theta = (-incoming).dot(&hit.normal);
+        let cos_theta = incoming[2];
         let sin_theta = (1. - cos_theta * cos_theta).sqrt();
 
         let dir = if refractive_ratio * sin_theta > 1.
             || rng.gen::<f64>() < dielectric_reflectance(cos_theta, refractive_ratio)
         {
-            reflect(*incoming, hit.normal)
+            reflect_z(*incoming)
         } else {
-            let refracted_perp = refractive_ratio * (*incoming + cos_theta * hit.normal.as_ref());
-            let refracted_par = -(1. - refracted_perp.norm_squared()).sqrt() * hit.normal.as_ref();
+            let up = *Vec3::z_axis();
+
+            let refracted_perp = refractive_ratio * (cos_theta * up - *incoming);
+            let refracted_par = -(1. - refracted_perp.norm_squared()).sqrt() * up;
 
             refracted_perp + refracted_par
         };
