@@ -5,6 +5,54 @@ pub const EPSILON: f64 = 1e-9;
 pub type Vec3 = Vector3<f64>;
 pub type Unit3 = Unit<Vec3>;
 
+pub struct OrthoNormalBasis {
+    u: Unit3,
+    v: Unit3,
+    w: Unit3,
+}
+
+impl OrthoNormalBasis {
+    pub fn from_uv(u: Unit3, v: Vec3) -> Self {
+        let w = Unit3::new_normalize(u.cross(&v));
+        let v = Unit3::new_unchecked(w.cross(&u));
+
+        Self { u, v, w }
+    }
+
+    pub fn from_w(w: Unit3) -> Self {
+        let other = if w.dot(&Vec3::x_axis()) > 0.9999 {
+            Vec3::y_axis()
+        } else {
+            Vec3::x_axis()
+        };
+
+        let u = Unit3::new_normalize(w.cross(&other));
+        let v = Unit3::new_unchecked(w.cross(&u));
+
+        Self { u, v, w }
+    }
+
+    pub fn u(&self) -> Unit3 {
+        self.u
+    }
+
+    pub fn v(&self) -> Unit3 {
+        self.v
+    }
+
+    pub fn w(&self) -> Unit3 {
+        self.w
+    }
+
+    pub fn trans_from_canonical(&self, point: Vec3) -> Vec3 {
+        Vec3::new(point.dot(&self.u), point.dot(&self.v), point.dot(&self.w))
+    }
+
+    pub fn trans_to_canonical(&self, point: Vec3) -> Vec3 {
+        point[0] * self.u.as_ref() + point[1] * self.v.as_ref() + point[2] * self.w.as_ref()
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Ray {
     pub origin: Vec3,
