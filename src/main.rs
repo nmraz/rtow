@@ -15,6 +15,7 @@ use math::Vec3;
 use render::{Camera, CameraOptions, RenderOptions};
 use scene::{Primitive, Scene};
 
+mod distr;
 mod geom;
 mod img;
 mod material;
