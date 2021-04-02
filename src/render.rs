@@ -23,8 +23,8 @@ pub struct Camera {
     origin: Vec3,
     bottom_left: Vec3,
 
-    u: Vec3,
-    v: Vec3,
+    u: Unit3,
+    v: Unit3,
     horiz: Vec3,
     vert: Vec3,
 
@@ -44,27 +44,23 @@ impl Camera {
         let viewport_height = 2. * (opts.vert_fov * f64::consts::PI / 360.).tan();
         let viewport_width = aspect_ratio * viewport_height;
 
-        let (w, focus_dist) = {
-            let mut w = opts.origin - opts.look_at;
-            let dist = w.normalize_mut();
+        let (w, focus_dist) = Unit3::new_and_get(opts.origin - opts.look_at);
 
-            (w, dist)
-        };
+        let basis = OrthoNormalBasis::from_wv(w, opts.vup);
 
-        // Note: right-handed coordinate system
-        let u = opts.vup.cross(&w).normalize();
-        let v = w.cross(&u);
-
-        let horiz = focus_dist * viewport_width * u;
-        let vert = focus_dist * viewport_height * v;
-        let bottom_left = opts.origin - horiz / 2. - vert / 2. - focus_dist * w;
+        let horiz = focus_dist * viewport_width * *basis.u();
+        let vert = focus_dist * viewport_height * *basis.v();
+        let bottom_left = opts.origin
+            - basis.trans_to_canonical(
+                focus_dist * Vec3::new(viewport_width / 2., viewport_height / 2., 1.),
+            );
 
         Self {
             origin: opts.origin,
             bottom_left,
 
-            u,
-            v,
+            u: basis.u(),
+            v: basis.v(),
             horiz,
             vert,
 
@@ -81,7 +77,7 @@ impl Camera {
     pub fn cast_ray(&self, pixel_x: f64, pixel_y: f64, rng: &mut dyn RngCore) -> Ray {
         let dof_offset = if self.lens_radius > 0. {
             let [rdx, rdy]: [f64; 2] = UnitDisc.sample(rng);
-            self.lens_radius * (rdx * self.u + rdy * self.v)
+            self.lens_radius * (rdx * *self.u + rdy * *self.v)
         } else {
             Vec3::default()
         };

@@ -12,8 +12,8 @@ pub struct OrthoNormalBasis {
 }
 
 impl OrthoNormalBasis {
-    pub fn from_uv(u: Unit3, v: Vec3) -> Self {
-        let w = Unit3::new_normalize(u.cross(&v));
+    pub fn from_wv(w: Unit3, v: Vec3) -> Self {
+        let u = Unit3::new_normalize(v.cross(&w));
         let v = Unit3::new_unchecked(w.cross(&u));
 
         Self { u, v, w }
