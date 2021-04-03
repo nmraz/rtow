@@ -116,22 +116,25 @@ impl Material for Dielectric {
         let cos_theta = incoming[2];
         let sin_theta = (1. - cos_theta * cos_theta).sqrt();
 
-        let dir = if refractive_ratio * sin_theta > 1.
+        let (dir, attenuation) = if refractive_ratio * sin_theta > 1.
             || rng.gen::<f64>() < dielectric_reflectance(cos_theta, refractive_ratio)
         {
-            reflect_z(*incoming)
+            (reflect_z(*incoming), 1.)
         } else {
             let up = *Vec3::z_axis();
 
             let refracted_perp = refractive_ratio * (cos_theta * up - *incoming);
             let refracted_par = -(1. - refracted_perp.norm_squared()).sqrt() * up;
 
-            refracted_perp + refracted_par
+            (
+                refracted_perp + refracted_par,
+                refractive_ratio * refractive_ratio,
+            )
         };
 
         Some(ScatteredRay {
             dir: Unit3::new_normalize(dir),
-            attenuation: Vec3::from_element(1.),
+            attenuation: Vec3::from_element(attenuation),
         })
     }
 }
