@@ -74,7 +74,10 @@ impl Camera {
         }
     }
 
-    pub fn cast_ray(&self, pixel_x: f64, pixel_y: f64, rng: &mut dyn RngCore) -> Ray {
+    pub fn cast_ray(&self, pixel_x: u32, pixel_y: u32, rng: &mut dyn RngCore) -> Ray {
+        let pixel_x = pixel_x as f64 + rng.gen::<f64>();
+        let pixel_y = pixel_y as f64 + rng.gen::<f64>();
+
         let dof_offset = if self.lens_radius > 0. {
             let [rdx, rdy]: [f64; 2] = UnitDisc.sample(rng);
             self.lens_radius * (rdx * *self.u + rdy * *self.v)
@@ -120,11 +123,7 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
         let mut rng = rand::thread_rng();
 
         *pixel = iter::repeat_with(|| {
-            let ray = camera.cast_ray(
-                px as f64 + rng.gen::<f64>(),
-                py as f64 + rng.gen::<f64>(),
-                &mut rng,
-            );
+            let ray = camera.cast_ray(px, py, &mut rng);
             trace_ray(scene, ray, &mut rng, opts.max_depth)
         })
         .take(opts.samples_per_pixel as usize)
