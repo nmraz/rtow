@@ -1,3 +1,4 @@
+use crate::geom::RawHitInfo;
 use crate::math::{Aabb, Ray, Vec3, EPSILON};
 
 use super::Primitive;
@@ -18,20 +19,20 @@ pub struct BvhNode {
 }
 
 impl BvhNode {
-    pub fn hit(&self, ray: &Ray, t_max: f64) -> Option<(&Primitive, f64)> {
+    pub fn hit(&self, ray: &Ray, t_max: f64) -> Option<(&Primitive, RawHitInfo)> {
         if !self.bounds.hit(ray, EPSILON, t_max) {
             return None;
         }
 
         match &self.data {
-            BvhNodeData::Leaf { prim } => prim.geom.hit(ray).map(|t| (prim, t)),
+            BvhNodeData::Leaf { prim } => prim.geom.hit(ray).map(|info| (prim, info)),
             BvhNodeData::Interior { left, right } => {
                 let left_hit = left.hit(ray, t_max);
-                let right_hit = right.hit(ray, left_hit.map_or(t_max, |(_prim, t)| t));
+                let right_hit = right.hit(ray, left_hit.map_or(t_max, |(_prim, info)| info.t));
 
                 match (left_hit, right_hit) {
                     (None, Some(hit)) => Some(hit),
-                    (Some((_priml, tl)), Some((primr, tr))) if tr < tl => Some((primr, tr)),
+                    (Some((_priml, il)), Some((primr, ir))) if ir.t < il.t => Some((primr, ir)),
                     _ => left_hit,
                 }
             }

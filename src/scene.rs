@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::geom::Geom;
+use crate::geom::{Geom, RawHitInfo};
 use crate::material::Material;
 use crate::math::{Ray, Unit3, Vec3};
 
@@ -14,16 +14,18 @@ pub enum HitSide {
     Outside,
 }
 
-pub struct HitInfo {
+pub struct HitInfo<'a> {
     pub point: Vec3,
     pub normal: Unit3,
     pub side: HitSide,
+    pub material: &'a dyn Material,
 }
 
-impl HitInfo {
-    pub fn from_geom_ray(geom: &dyn Geom, ray: &Ray, t: f64) -> Self {
+impl<'a> HitInfo<'a> {
+    pub fn from_raw(ray: &Ray, raw: &RawHitInfo, material: &'a dyn Material) -> Self {
+        let &RawHitInfo { t, outward_normal } = raw;
+
         let point = ray.at(t);
-        let outward_normal = geom.outward_normal_at(point);
 
         let (normal, side) = if ray.dir.dot(&outward_normal) > 0. {
             (-outward_normal, HitSide::Inside)
@@ -35,10 +37,10 @@ impl HitInfo {
             point,
             normal,
             side,
+            material,
         }
     }
 }
-
 pub struct Primitive {
     pub geom: Box<dyn Geom + Sync>,
     pub material: Arc<dyn Material + Send + Sync>,
@@ -67,8 +69,8 @@ impl Scene {
         }
     }
 
-    pub fn hit(&self, ray: &Ray) -> Option<(HitInfo, &dyn Material)> {
-        let (prim, t) = self.primitives.as_ref()?.hit(ray, f64::INFINITY)?;
-        Some((HitInfo::from_geom_ray(&*prim.geom, ray, t), &*prim.material))
+    pub fn hit(&self, ray: &Ray) -> Option<HitInfo> {
+        let (prim, raw) = self.primitives.as_ref()?.hit(ray, f64::INFINITY)?;
+        Some(HitInfo::from_raw(ray, &raw, &*prim.material))
     }
 }

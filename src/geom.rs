@@ -1,9 +1,14 @@
 use crate::math::{Aabb, Ray, Unit3, Vec3, EPSILON};
 
+#[derive(Debug, Clone, Copy)]
+pub struct RawHitInfo {
+    pub t: f64,
+    pub outward_normal: Unit3,
+}
+
 pub trait Geom {
     fn bounds(&self) -> Aabb;
-    fn hit(&self, ray: &Ray) -> Option<f64>;
-    fn outward_normal_at(&self, point: Vec3) -> Unit3;
+    fn hit(&self, ray: &Ray) -> Option<RawHitInfo>;
 }
 
 pub struct Sphere {
@@ -23,7 +28,7 @@ impl Geom for Sphere {
         Aabb::new(self.center - radius_vec, self.center + radius_vec)
     }
 
-    fn hit(&self, ray: &Ray) -> Option<f64> {
+    fn hit(&self, ray: &Ray) -> Option<RawHitInfo> {
         let oc = ray.origin - self.center;
         let b = oc.dot(&ray.dir);
         let c = oc.norm_squared() - self.radius * self.radius;
@@ -41,16 +46,19 @@ impl Geom for Sphere {
 
         // Find the intersection nearest to the origin (minimal `t`), but never report
         // intersections behind the origin (negative `t`).
-        if t1 > EPSILON {
-            Some(t1)
+        let t = if t1 > EPSILON {
+            t1
         } else if t2 > EPSILON {
-            Some(t2)
+            t2
         } else {
-            None
-        }
-    }
+            return None;
+        };
 
-    fn outward_normal_at(&self, point: Vec3) -> Unit3 {
-        Unit3::new_normalize(point - self.center)
+        let normal = Unit3::new_unchecked((ray.at(t) - self.center) / self.radius);
+
+        Some(RawHitInfo {
+            t,
+            outward_normal: normal,
+        })
     }
 }

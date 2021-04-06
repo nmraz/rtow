@@ -136,15 +136,15 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
     let mut color = Vec3::from_element(1.);
 
     for _ in 0..max_depth {
-        let (hit, material) = match scene.hit(&ray) {
-            Some(data) => data,
+        let hit = match scene.hit(&ray) {
+            Some(hit) => hit,
             None => return color.component_mul(&sample_background(&ray)),
         };
 
         let basis = OrthoNormalBasis::from_w(hit.normal);
         let incoming = Unit3::new_unchecked(-basis.trans_from_canonical(*ray.dir));
 
-        let scattered = match material.scatter(incoming, hit.side, rng) {
+        let scattered = match hit.material.scatter(incoming, hit.side, rng) {
             Some(scattered) => scattered,
             None => return Vec3::default(),
         };
