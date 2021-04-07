@@ -146,3 +146,19 @@ fn dielectric_reflectance(cos_theta: f64, refractive_ratio: f64) -> f64 {
     let r0 = ((1. - refractive_ratio) / (1. + refractive_ratio)).powi(2);
     schlick_reflectance(r0, cos_theta)
 }
+
+pub struct DiffuseLight {
+    pub color: Vec3,
+}
+
+impl DiffuseLight {
+    pub fn new(color: Vec3) -> Self {
+        Self { color }
+    }
+}
+
+impl Material for DiffuseLight {
+    fn radiance(&self, _incoming: Unit3, _side: HitSide, _rng: &mut dyn RngCore) -> Radiance {
+        Radiance::emitted(self.color)
+    }
+}
