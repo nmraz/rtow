@@ -11,13 +11,37 @@ pub struct ScatteredRay {
     pub attenuation: Vec3,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Radiance {
+    pub scattered: Option<ScatteredRay>,
+    pub emitted: Vec3,
+}
+
+impl Radiance {
+    pub fn none() -> Self {
+        Self {
+            scattered: None,
+            emitted: Vec3::default(),
+        }
+    }
+
+    pub fn scattered(dir: Unit3, attenuation: Vec3) -> Self {
+        Self {
+            scattered: Some(ScatteredRay { dir, attenuation }),
+            emitted: Vec3::default(),
+        }
+    }
+
+    pub fn emitted(emitted: Vec3) -> Self {
+        Self {
+            scattered: None,
+            emitted,
+        }
+    }
+}
+
 pub trait Material {
-    fn scatter(
-        &self,
-        incoming: Unit3,
-        side: HitSide,
-        rng: &mut dyn RngCore,
-    ) -> Option<ScatteredRay>;
+    fn radiance(&self, incoming: Unit3, side: HitSide, rng: &mut dyn RngCore) -> Radiance;
 }
 
 pub struct Diffuse {
@@ -31,16 +55,8 @@ impl Diffuse {
 }
 
 impl Material for Diffuse {
-    fn scatter(
-        &self,
-        _incoming: Unit3,
-        _side: HitSide,
-        rng: &mut dyn RngCore,
-    ) -> Option<ScatteredRay> {
-        Some(ScatteredRay {
-            dir: CosWeightedHemisphere.sample(rng),
-            attenuation: self.albedo,
-        })
+    fn radiance(&self, _incoming: Unit3, _side: HitSide, rng: &mut dyn RngCore) -> Radiance {
+        Radiance::scattered(CosWeightedHemisphere.sample(rng), self.albedo)
     }
 }
 
@@ -59,12 +75,7 @@ impl Metal {
 }
 
 impl Material for Metal {
-    fn scatter(
-        &self,
-        incoming: Unit3,
-        _side: HitSide,
-        rng: &mut dyn RngCore,
-    ) -> Option<ScatteredRay> {
+    fn radiance(&self, incoming: Unit3, _side: HitSide, rng: &mut dyn RngCore) -> Radiance {
         let reflected = reflect_z(*incoming);
         let dir = Unit3::new_normalize(
             reflected + (1. - self.gloss) * Vec3::from(UnitSphere.sample(rng)),
@@ -73,12 +84,12 @@ impl Material for Metal {
         let cos_theta = dir[2];
 
         if cos_theta > 0. {
-            Some(ScatteredRay {
+            Radiance::scattered(
                 dir,
-                attenuation: self.albedo.map(|r0| schlick_reflectance(r0, cos_theta)),
-            })
+                self.albedo.map(|r0| schlick_reflectance(r0, cos_theta)),
+            )
         } else {
-            None
+            Radiance::none()
         }
     }
 }
@@ -102,12 +113,7 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(
-        &self,
-        incoming: Unit3,
-        side: HitSide,
-        rng: &mut dyn RngCore,
-    ) -> Option<ScatteredRay> {
+    fn radiance(&self, incoming: Unit3, side: HitSide, rng: &mut dyn RngCore) -> Radiance {
         let refractive_ratio = match side {
             HitSide::Inside => self.refractive_index,
             HitSide::Outside => 1. / self.refractive_index,
@@ -132,10 +138,7 @@ impl Material for Dielectric {
             )
         };
 
-        Some(ScatteredRay {
-            dir: Unit3::new_normalize(dir),
-            attenuation: Vec3::from_element(attenuation),
-        })
+        Radiance::scattered(Unit3::new_normalize(dir), Vec3::from_element(attenuation))
     }
 }
 

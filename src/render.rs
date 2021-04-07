@@ -124,7 +124,7 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
 
         *pixel = iter::repeat_with(|| {
             let ray = camera.cast_ray(px, py, &mut rng);
-            trace_ray(scene, ray, &mut rng, opts.max_depth)
+            trace_ray(scene, &ray, &mut rng, opts.max_depth)
         })
         .take(opts.samples_per_pixel as usize)
         .sum::<Vec3>()
@@ -132,31 +132,34 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
     });
 }
 
-fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32) -> Vec3 {
-    let mut color = Vec3::from_element(1.);
-
-    for _ in 0..max_depth {
-        let hit = match scene.hit(&ray) {
-            Some(hit) => hit,
-            None => return color.component_mul(&sample_background(&ray)),
-        };
-
-        let basis = OrthoNormalBasis::from_w(hit.normal);
-        let incoming = Unit3::new_unchecked(-basis.trans_from_canonical(*ray.dir));
-
-        let scattered = match hit.material.scatter(incoming, hit.side, rng) {
-            Some(scattered) => scattered,
-            None => return Vec3::default(),
-        };
-
-        color.component_mul_assign(&scattered.attenuation);
-        ray = Ray {
-            origin: hit.point,
-            dir: Unit3::new_unchecked(basis.trans_to_canonical(*scattered.dir)),
-        }
+fn trace_ray(scene: &Scene, ray: &Ray, rng: &mut dyn RngCore, depth: u32) -> Vec3 {
+    if depth == 0 {
+        return Vec3::default();
     }
 
-    Vec3::default()
+    let hit = match scene.hit(&ray) {
+        Some(hit) => hit,
+        None => return sample_background(&ray),
+    };
+
+    let basis = OrthoNormalBasis::from_w(hit.normal);
+    let incoming = Unit3::new_unchecked(-basis.trans_from_canonical(*ray.dir));
+
+    let radiance = hit.material.radiance(incoming, hit.side, rng);
+    let mut color = radiance.emitted;
+
+    if let Some(scattered) = &radiance.scattered {
+        let ray = Ray {
+            origin: hit.point,
+            dir: Unit3::new_unchecked(basis.trans_to_canonical(*scattered.dir)),
+        };
+
+        color += scattered
+            .attenuation
+            .component_mul(&trace_ray(scene, &ray, rng, depth - 1));
+    }
+
+    color
 }
 
 fn sample_background(ray: &Ray) -> Vec3 {
