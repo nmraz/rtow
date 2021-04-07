@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use structopt::StructOpt;
 
@@ -33,10 +33,6 @@ struct CliArgs {
     #[structopt(long, short)]
     pub height: u32,
 
-    /// Seed to use when generating the scene. If this is not provided, a random seed will be used.
-    #[structopt(long)]
-    pub scene_seed: Option<u64>,
-
     /// Vertical field of view, in degrees
     #[structopt(long, default_value = "50")]
     pub vfov: f64,
@@ -61,13 +57,7 @@ struct CliArgs {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = CliArgs::from_args();
 
-    let scene_seed = args
-        .scene_seed
-        .unwrap_or_else(|| rand::thread_rng().next_u64());
-
-    println!("Scene seed: {}", scene_seed);
-
-    let mut scene_rng = Pcg64::seed_from_u64(scene_seed);
+    let mut scene_rng = Pcg64::seed_from_u64(17085947984061919587);
     let scene = build_scene(&mut scene_rng);
 
     let camera_opts = CameraOptions {
