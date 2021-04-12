@@ -25,7 +25,7 @@ impl BvhNode {
         }
 
         match &self.data {
-            BvhNodeData::Leaf { prim } => prim.geom.hit(ray).map(|info| (prim, info)),
+            BvhNodeData::Leaf { prim } => prim.geom.hit(ray, t_max).map(|info| (prim, info)),
             BvhNodeData::Interior { left, right } => {
                 let left_hit = left.hit(ray, t_max);
                 let right_hit = right.hit(ray, left_hit.map_or(t_max, |(_prim, info)| info.t));

@@ -8,7 +8,7 @@ pub struct RawHitInfo {
 
 pub trait Geom {
     fn bounds(&self) -> Aabb;
-    fn hit(&self, ray: &Ray) -> Option<RawHitInfo>;
+    fn hit(&self, ray: &Ray, t_max: f64) -> Option<RawHitInfo>;
 }
 
 pub struct Sphere {
@@ -28,7 +28,7 @@ impl Geom for Sphere {
         Aabb::new(self.center - radius_vec, self.center + radius_vec)
     }
 
-    fn hit(&self, ray: &Ray) -> Option<RawHitInfo> {
+    fn hit(&self, ray: &Ray, t_max: f64) -> Option<RawHitInfo> {
         let oc = ray.origin - self.center;
         let b = oc.dot(&ray.dir);
         let c = oc.norm_squared() - self.radius * self.radius;
@@ -46,9 +46,9 @@ impl Geom for Sphere {
 
         // Find the intersection nearest to the origin (minimal `t`), but never report
         // intersections behind the origin (negative `t`).
-        let t = if t1 > EPSILON {
+        let t = if (EPSILON..t_max).contains(&t1) {
             t1
-        } else if t2 > EPSILON {
+        } else if (EPSILON..t_max).contains(&t2) {
             t2
         } else {
             return None;

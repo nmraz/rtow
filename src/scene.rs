@@ -75,8 +75,8 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn hit(&self, ray: &Ray) -> Option<HitInfo> {
-        let (prim, raw) = self.primitives.as_ref()?.hit(ray, f64::INFINITY)?;
+    pub fn hit(&self, ray: &Ray, t_max: f64) -> Option<HitInfo<'_>> {
+        let (prim, raw) = self.primitives.as_ref()?.hit(ray, t_max)?;
         Some(HitInfo::from_raw(ray, &raw, &*prim.material))
     }
 }

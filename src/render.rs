@@ -137,7 +137,7 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
     let mut attenuation = Vec3::from_element(1.);
 
     for _ in 0..max_depth {
-        let hit = match scene.hit(&ray) {
+        let hit = match scene.hit(&ray, f64::INFINITY) {
             Some(hit) => hit,
             None => {
                 radiance += attenuation.component_mul(&sample_background(&ray));
