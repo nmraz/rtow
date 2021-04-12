@@ -5,8 +5,10 @@ use crate::material::Material;
 use crate::math::{Ray, Unit3, Vec3};
 
 use self::bvh::BvhNode;
+use self::prim::Primitive;
 
 mod bvh;
+mod prim;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HitSide {
@@ -41,19 +43,29 @@ impl<'a> HitInfo<'a> {
         }
     }
 }
-pub struct Primitive {
-    pub geom: Box<dyn Geom + Sync>,
-    pub material: Arc<dyn Material + Send + Sync>,
+
+pub struct SceneBuilder {
+    primitives: Vec<Primitive>,
 }
 
-impl Primitive {
-    pub fn new(
+impl SceneBuilder {
+    pub fn new() -> Self {
+        Self {
+            primitives: Vec::new(),
+        }
+    }
+
+    pub fn add_primitive(
+        &mut self,
         geom: impl Geom + Sync + 'static,
         material: Arc<dyn Material + Send + Sync>,
-    ) -> Self {
-        Self {
-            geom: Box::new(geom),
-            material,
+    ) {
+        self.primitives.push(Primitive::new(geom, material))
+    }
+
+    pub fn build(self) -> Scene {
+        Scene {
+            primitives: bvh::build(self.primitives),
         }
     }
 }
@@ -63,12 +75,6 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn with_primitives(primitives: Vec<Primitive>) -> Self {
-        Self {
-            primitives: bvh::build(primitives),
-        }
-    }
-
     pub fn hit(&self, ray: &Ray) -> Option<HitInfo> {
         let (prim, raw) = self.primitives.as_ref()?.hit(ray, f64::INFINITY)?;
         Some(HitInfo::from_raw(ray, &raw, &*prim.material))

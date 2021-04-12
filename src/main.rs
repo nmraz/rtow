@@ -13,7 +13,7 @@ use geom::Sphere;
 use material::{Dielectric, Diffuse, Material, Metal};
 use math::Vec3;
 use render::{Camera, CameraOptions, RenderOptions};
-use scene::{Primitive, Scene};
+use scene::{Scene, SceneBuilder};
 
 mod distr;
 mod geom;
@@ -114,24 +114,27 @@ fn build_scene(rng: &mut impl Rng) -> Scene {
     let ground_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
     let glass_material = Arc::new(Dielectric::new(1.5));
 
-    let mut primitives = vec![
-        Primitive::new(
-            Sphere::new(Vec3::new(0., -1000., 0.), 1000.),
-            ground_material,
-        ),
-        Primitive::new(
-            Sphere::new(Vec3::new(0., 1., 0.), 1.),
-            glass_material.clone(),
-        ),
-        Primitive::new(
-            Sphere::new(Vec3::new(-4., 1., 0.), 1.),
-            Arc::new(Diffuse::new(Vec3::new(0.4, 0.2, 0.1))),
-        ),
-        Primitive::new(
-            Sphere::new(Vec3::new(4., 1., 0.), 1.),
-            Arc::new(Metal::new(Vec3::new(0.5, 0.6, 0.7), 1.)),
-        ),
-    ];
+    let mut builder = SceneBuilder::new();
+
+    builder.add_primitive(
+        Sphere::new(Vec3::new(0., -1000., 0.), 1000.),
+        ground_material,
+    );
+
+    builder.add_primitive(
+        Sphere::new(Vec3::new(-4., 1., 0.), 1.),
+        Arc::new(Diffuse::new(Vec3::new(0.4, 0.2, 0.1))),
+    );
+
+    builder.add_primitive(
+        Sphere::new(Vec3::new(-4., 1., 0.), 1.),
+        Arc::new(Diffuse::new(Vec3::new(0.4, 0.2, 0.1))),
+    );
+
+    builder.add_primitive(
+        Sphere::new(Vec3::new(4., 1., 0.), 1.),
+        Arc::new(Metal::new(Vec3::new(0.5, 0.6, 0.7), 1.)),
+    );
 
     for a in -RANGE..RANGE {
         for b in -RANGE..RANGE {
@@ -163,9 +166,9 @@ fn build_scene(rng: &mut impl Rng) -> Scene {
                 glass_material.clone()
             };
 
-            primitives.push(Primitive::new(Sphere::new(center, 0.2), material));
+            builder.add_primitive(Sphere::new(center, 0.2), material);
         }
     }
 
-    Scene::with_primitives(primitives)
+    builder.build()
 }
