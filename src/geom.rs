@@ -44,15 +44,10 @@ impl Geom for Sphere {
         let t1 = -b - radical;
         let t2 = -b + radical;
 
-        // Find the intersection nearest to the origin (minimal `t`), but never report
-        // intersections behind the origin (negative `t`).
-        let t = if (EPSILON..t_max).contains(&t1) {
-            t1
-        } else if (EPSILON..t_max).contains(&t2) {
-            t2
-        } else {
-            return None;
-        };
+        let t = [t1, t2]
+            .iter()
+            .copied()
+            .find(|t| (EPSILON..t_max).contains(t))?;
 
         let normal = Unit3::new_unchecked((ray.at(t) - self.center) / self.radius);
 
