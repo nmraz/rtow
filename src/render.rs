@@ -4,6 +4,7 @@ use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitDisc};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
+use crate::material::Pdf;
 use crate::math::{OrthoNormalBasis, Ray, Unit3, Vec3};
 use crate::scene::Scene;
 
@@ -134,13 +135,13 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
 
 fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32) -> Vec3 {
     let mut radiance = Vec3::default();
-    let mut attenuation = Vec3::from_element(1.);
+    let mut throughput = Vec3::from_element(1.);
 
     for _ in 0..max_depth {
         let hit = match scene.hit(&ray, f64::INFINITY) {
             Some(hit) => hit,
             None => {
-                radiance += attenuation.component_mul(&sample_background(&ray));
+                radiance += throughput.component_mul(&sample_background(&ray));
                 break;
             }
         };
@@ -148,18 +149,21 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
         let basis = OrthoNormalBasis::from_w(hit.normal);
         let incoming = Unit3::new_unchecked(-basis.trans_from_canonical(*ray.dir));
 
-        let bounce_radiance = hit.material.radiance(incoming, hit.side, rng);
-        radiance += attenuation.component_mul(&bounce_radiance.emitted);
-
-        match &bounce_radiance.scattered {
-            Some(scattered) => {
-                attenuation.component_mul_assign(&scattered.attenuation);
-                ray = Ray {
-                    origin: hit.point,
-                    dir: Unit3::new_unchecked(basis.trans_to_canonical(*scattered.dir)),
-                };
-            }
+        let sample = match hit.material.sample_bsdf(incoming, hit.side, rng) {
+            Some(sample) => sample,
             None => break,
+        };
+
+        let pdf_factor = match sample.pdf {
+            Pdf::Real(pdf) => 1. / pdf,
+            Pdf::Delta => 1.,
+        };
+
+        let attenuation = incoming[2] * pdf_factor * sample.attenuation;
+        throughput.component_mul_assign(&attenuation);
+        ray = Ray {
+            origin: hit.point,
+            dir: Unit3::new_unchecked(basis.trans_to_canonical(*sample.dir)),
         }
     }
 

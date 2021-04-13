@@ -1,3 +1,5 @@
+use std::f64;
+
 use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitSphere};
 
@@ -6,42 +8,43 @@ use crate::math::{Unit3, Vec3};
 use crate::scene::HitSide;
 
 #[derive(Debug, Clone, Copy)]
-pub struct ScatteredRay {
-    pub dir: Unit3,
-    pub attenuation: Vec3,
+pub enum Pdf {
+    Real(f64),
+    Delta,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Radiance {
-    pub scattered: Option<ScatteredRay>,
-    pub emitted: Vec3,
+pub struct SampledBsdf {
+    pub dir: Unit3,
+    pub attenuation: Vec3,
+    pub pdf: Pdf,
 }
 
-impl Radiance {
-    pub fn none() -> Self {
+impl SampledBsdf {
+    pub fn new_real(dir: Unit3, attenuation: Vec3, pdf: f64) -> Self {
         Self {
-            scattered: None,
-            emitted: Vec3::default(),
+            dir,
+            attenuation,
+            pdf: Pdf::Real(pdf),
         }
     }
 
-    pub fn scattered(dir: Unit3, attenuation: Vec3) -> Self {
+    pub fn new_specular(dir: Unit3, attenuation: Vec3) -> Self {
         Self {
-            scattered: Some(ScatteredRay { dir, attenuation }),
-            emitted: Vec3::default(),
-        }
-    }
-
-    pub fn emitted(emitted: Vec3) -> Self {
-        Self {
-            scattered: None,
-            emitted,
+            dir,
+            attenuation,
+            pdf: Pdf::Delta,
         }
     }
 }
 
 pub trait Material {
-    fn radiance(&self, incoming: Unit3, side: HitSide, rng: &mut dyn RngCore) -> Radiance;
+    fn sample_bsdf(
+        &self,
+        incoming: Unit3,
+        side: HitSide,
+        rng: &mut dyn RngCore,
+    ) -> Option<SampledBsdf>;
 }
 
 pub struct Diffuse {
@@ -55,8 +58,17 @@ impl Diffuse {
 }
 
 impl Material for Diffuse {
-    fn radiance(&self, _incoming: Unit3, _side: HitSide, rng: &mut dyn RngCore) -> Radiance {
-        Radiance::scattered(CosWeightedHemisphere.sample(rng), self.albedo)
+    fn sample_bsdf(
+        &self,
+        incoming: Unit3,
+        _side: HitSide,
+        rng: &mut dyn RngCore,
+    ) -> Option<SampledBsdf> {
+        Some(SampledBsdf::new_real(
+            CosWeightedHemisphere.sample(rng),
+            self.albedo * f64::consts::FRAC_1_PI,
+            incoming[2] * f64::consts::FRAC_1_PI,
+        ))
     }
 }
 
@@ -75,7 +87,12 @@ impl Metal {
 }
 
 impl Material for Metal {
-    fn radiance(&self, incoming: Unit3, _side: HitSide, rng: &mut dyn RngCore) -> Radiance {
+    fn sample_bsdf(
+        &self,
+        incoming: Unit3,
+        _side: HitSide,
+        rng: &mut dyn RngCore,
+    ) -> Option<SampledBsdf> {
         let reflected = reflect_z(*incoming);
         let dir = Unit3::new_normalize(
             reflected + (1. - self.gloss) * Vec3::from(UnitSphere.sample(rng)),
@@ -84,12 +101,12 @@ impl Material for Metal {
         let cos_theta = dir[2];
 
         if cos_theta > 0. {
-            Radiance::scattered(
+            Some(SampledBsdf::new_specular(
                 dir,
-                self.albedo.map(|r0| schlick_reflectance(r0, cos_theta)),
-            )
+                self.albedo.map(|r0| schlick_reflectance(r0, cos_theta)) / incoming[2],
+            ))
         } else {
-            Radiance::none()
+            None
         }
     }
 }
@@ -113,7 +130,12 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn radiance(&self, incoming: Unit3, side: HitSide, rng: &mut dyn RngCore) -> Radiance {
+    fn sample_bsdf(
+        &self,
+        incoming: Unit3,
+        side: HitSide,
+        rng: &mut dyn RngCore,
+    ) -> Option<SampledBsdf> {
         let refractive_ratio = match side {
             HitSide::Inside => self.refractive_index,
             HitSide::Outside => 1. / self.refractive_index,
@@ -138,27 +160,14 @@ impl Material for Dielectric {
             )
         };
 
-        Radiance::scattered(Unit3::new_normalize(dir), Vec3::from_element(attenuation))
+        Some(SampledBsdf::new_specular(
+            Unit3::new_normalize(dir),
+            Vec3::from_element(attenuation) / incoming[2],
+        ))
     }
 }
 
 fn dielectric_reflectance(cos_theta: f64, refractive_ratio: f64) -> f64 {
     let r0 = ((1. - refractive_ratio) / (1. + refractive_ratio)).powi(2);
     schlick_reflectance(r0, cos_theta)
-}
-
-pub struct DiffuseLight {
-    pub color: Vec3,
-}
-
-impl DiffuseLight {
-    pub fn new(color: Vec3) -> Self {
-        Self { color }
-    }
-}
-
-impl Material for DiffuseLight {
-    fn radiance(&self, _incoming: Unit3, _side: HitSide, _rng: &mut dyn RngCore) -> Radiance {
-        Radiance::emitted(self.color)
-    }
 }
