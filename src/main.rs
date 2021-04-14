@@ -122,8 +122,8 @@ fn build_scene(rng: &mut impl Rng) -> Scene {
     );
 
     builder.add_primitive(
-        Sphere::new(Vec3::new(-4., 1., 0.), 1.),
-        Arc::new(Diffuse::new(Vec3::new(0.4, 0.2, 0.1))),
+        Sphere::new(Vec3::new(0., 1., 0.), 1.),
+        glass_material.clone(),
     );
 
     builder.add_primitive(
