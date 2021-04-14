@@ -4,9 +4,9 @@ use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitDisc};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::material::Pdf;
 use crate::math::{OrthoNormalBasis, Ray, Unit3, Vec3};
 use crate::scene::Scene;
+use crate::shading::Pdf;
 
 pub struct CameraOptions {
     pub pixel_width: u32,
@@ -146,10 +146,9 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
             }
         };
 
-        let basis = OrthoNormalBasis::from_w(hit.normal);
-        let incoming = Unit3::new_unchecked(-basis.trans_from_canonical(*ray.dir));
+        let shading = hit.shading(&ray);
 
-        let sample = match hit.material.sample_bsdf(incoming, hit.side, rng) {
+        let sample = match hit.material.sample_bsdf(&shading, rng) {
             Some(sample) => sample,
             None => break,
         };
@@ -159,12 +158,10 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
             Pdf::Delta => 1.,
         };
 
-        let attenuation = incoming[2] * pdf_factor * sample.attenuation;
+        let attenuation = shading.cos_theta() * pdf_factor * sample.attenuation;
         throughput.component_mul_assign(&attenuation);
-        ray = Ray {
-            origin: hit.point,
-            dir: Unit3::new_unchecked(basis.trans_to_canonical(*sample.dir)),
-        }
+
+        ray = hit.geom_hit.spawn_ray(sample.dir);
     }
 
     radiance

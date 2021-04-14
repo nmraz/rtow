@@ -22,6 +22,7 @@ mod material;
 mod math;
 mod render;
 mod scene;
+mod shading;
 
 #[derive(StructOpt)]
 struct CliArgs {

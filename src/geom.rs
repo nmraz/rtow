@@ -1,9 +1,54 @@
-use crate::math::{Aabb, Ray, Unit3, Vec3, EPSILON};
+use crate::math::{Aabb, OrthoNormalBasis, Ray, Unit3, Vec3, EPSILON};
 
 #[derive(Debug, Clone, Copy)]
 pub struct RawHitInfo {
     pub t: f64,
     pub outward_normal: Unit3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HitSide {
+    Inside,
+    Outside,
+}
+
+pub struct HitInfo {
+    pub point: Vec3,
+    pub basis: OrthoNormalBasis,
+    pub side: HitSide,
+}
+
+impl HitInfo {
+    pub fn from_raw(ray: &Ray, raw: &RawHitInfo) -> Self {
+        let &RawHitInfo { t, outward_normal } = raw;
+
+        let point = ray.at(t);
+
+        let (normal, side) = if ray.dir.dot(&outward_normal) > 0. {
+            (-outward_normal, HitSide::Inside)
+        } else {
+            (outward_normal, HitSide::Outside)
+        };
+
+        let basis = OrthoNormalBasis::from_w(normal);
+
+        Self { point, basis, side }
+    }
+
+    pub fn world_to_local(&self, world: Unit3) -> Unit3 {
+        Unit3::new_unchecked(self.basis.trans_from_canonical(*world))
+    }
+
+    pub fn local_to_world(&self, local: Unit3) -> Unit3 {
+        Unit3::new_unchecked(self.basis.trans_to_canonical(*local))
+    }
+
+    pub fn spawn_ray(&self, local_dir: Unit3) -> Ray {
+        Ray {
+            origin: self.point,
+            dir: self.local_to_world(local_dir),
+        }
+    }
 }
 
 pub trait Geom {
