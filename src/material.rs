@@ -13,7 +13,7 @@ pub trait Material {
 }
 
 pub struct Diffuse {
-    pub albedo: Vec3,
+    albedo: Vec3,
 }
 
 impl Diffuse {
@@ -33,7 +33,7 @@ impl Material for Diffuse {
 }
 
 pub struct Metal {
-    pub albedo: Vec3,
+    albedo: Vec3,
     gloss: f64,
 }
 
@@ -75,7 +75,7 @@ fn schlick_reflectance(r0: f64, cos_theta: f64) -> f64 {
 }
 
 pub struct Dielectric {
-    pub refractive_index: f64,
+    refractive_index: f64,
 }
 
 impl Dielectric {
