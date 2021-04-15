@@ -26,23 +26,23 @@ pub enum Pdf {
 #[derive(Debug, Clone, Copy)]
 pub struct SampledRadiance {
     pub dir: Unit3,
-    pub attenuation: Vec3,
+    pub color: Vec3,
     pub pdf: Pdf,
 }
 
 impl SampledRadiance {
-    pub fn new_real(dir: Unit3, attenuation: Vec3, pdf: f64) -> Self {
+    pub fn new_real(dir: Unit3, color: Vec3, pdf: f64) -> Self {
         Self {
             dir,
-            attenuation,
+            color,
             pdf: Pdf::Real(pdf),
         }
     }
 
-    pub fn new_specular(dir: Unit3, attenuation: Vec3) -> Self {
+    pub fn new_specular(dir: Unit3, color: Vec3) -> Self {
         Self {
             dir,
-            attenuation,
+            color,
             pdf: Pdf::Delta,
         }
     }

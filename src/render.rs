@@ -158,7 +158,7 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
             Pdf::Delta => 1.,
         };
 
-        let attenuation = shading.cos_theta() * pdf_factor * sample.attenuation;
+        let attenuation = shading.cos_theta() * pdf_factor * sample.color;
         throughput.component_mul_assign(&attenuation);
 
         ray = hit.geom_hit.spawn_ray(sample.dir);
