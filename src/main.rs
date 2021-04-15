@@ -18,6 +18,7 @@ use scene::{Scene, SceneBuilder};
 mod distr;
 mod geom;
 mod img;
+mod light;
 mod material;
 mod math;
 mod render;
