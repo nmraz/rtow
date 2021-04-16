@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::geom::{Geom, HitInfo};
+use crate::light::Light;
 use crate::material::Material;
 use crate::math::Ray;
 use crate::shading::ShadingInfo;
@@ -33,12 +34,14 @@ impl<'a> PrimitiveHit<'a> {
 
 pub struct SceneBuilder {
     primitives: Vec<Primitive>,
+    lights: Vec<Arc<dyn Light + Send + Sync>>,
 }
 
 impl SceneBuilder {
     pub fn new() -> Self {
         Self {
             primitives: Vec::new(),
+            lights: Vec::new(),
         }
     }
 
@@ -50,15 +53,21 @@ impl SceneBuilder {
         self.primitives.push(Primitive::new(geom, material))
     }
 
+    pub fn add_light(&mut self, light: impl Light + Send + Sync + 'static) {
+        self.lights.push(Arc::new(light))
+    }
+
     pub fn build(self) -> Scene {
         Scene {
             primitives: bvh::build(self.primitives),
+            lights: self.lights,
         }
     }
 }
 
 pub struct Scene {
     primitives: Option<Box<BvhNode>>,
+    lights: Vec<Arc<dyn Light + Send + Sync>>,
 }
 
 impl Scene {
@@ -66,5 +75,9 @@ impl Scene {
         let (prim, raw) = self.primitives.as_ref()?.hit(ray, t_max)?;
         let geom_hit = HitInfo::from_raw(ray, &raw);
         Some(PrimitiveHit::new(geom_hit, &*prim.material))
+    }
+
+    pub fn lights(&self) -> &[Arc<dyn Light + Send + Sync>] {
+        &self.lights
     }
 }
