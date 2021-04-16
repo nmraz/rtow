@@ -142,7 +142,6 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
         let hit = match scene.hit(&ray, f64::INFINITY) {
             Some(hit) => hit,
             None => {
-                radiance += throughput.component_mul(&sample_background(&ray));
                 break;
             }
         };
@@ -162,7 +161,7 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
 
         throughput.component_mul_assign(&sample.scaled_color());
 
-        ray = hit.geom_hit.spawn_ray(sample.dir);
+        ray = hit.geom_hit.spawn_local_ray(sample.dir);
     }
 
     radiance
@@ -174,11 +173,13 @@ fn sample_light(
     shading_info: &ShadingInfo,
     rng: &mut dyn RngCore,
 ) -> Option<Vec3> {
+    let geom_hit = &hit.geom_hit;
+
     let light = scene.lights().choose(rng)?;
-    let (sample, dist) = light.sample_incident_at(hit.geom_hit.point, rng)?;
+    let (sample, dist) = light.sample_incident_at(geom_hit, rng)?;
 
     let occluded = scene
-        .hit(&hit.geom_hit.spawn_ray(sample.dir), dist - EPSILON)
+        .hit(&geom_hit.spawn_ray(sample.dir), dist - EPSILON)
         .is_some();
 
     if !occluded {
@@ -190,9 +191,4 @@ fn sample_light(
     } else {
         None
     }
-}
-
-fn sample_background(ray: &Ray) -> Vec3 {
-    let t = 0.5 * (ray.dir[1] + 1.);
-    (1. - t) * Vec3::new(1., 1., 1.) + t * Vec3::new(0.5, 0.7, 1.)
 }

@@ -1,12 +1,13 @@
 use rand::RngCore;
 
+use crate::geom::HitInfo;
 use crate::math::{Unit3, Vec3};
 use crate::shading::SampledRadiance;
 
 pub trait Light {
     fn sample_incident_at(
         &self,
-        point: Vec3,
+        hit: &HitInfo,
         rng: &mut dyn RngCore,
     ) -> Option<(SampledRadiance, f64)>;
 }
@@ -25,10 +26,10 @@ impl PointLight {
 impl Light for PointLight {
     fn sample_incident_at(
         &self,
-        point: Vec3,
+        hit: &HitInfo,
         _rng: &mut dyn RngCore,
     ) -> Option<(SampledRadiance, f64)> {
-        let (dir, dist) = Unit3::new_and_get(self.point - point);
+        let (dir, dist) = Unit3::new_and_get(self.point - hit.point);
         Some((
             SampledRadiance::new_specular(dir, self.color / dist.powi(2)),
             dist,

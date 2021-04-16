@@ -60,6 +60,10 @@ pub struct Ray {
 }
 
 impl Ray {
+    pub fn new(origin: Vec3, dir: Unit3) -> Self {
+        Self { origin, dir }
+    }
+
     pub fn pointing_through(origin: Vec3, target: Vec3) -> Self {
         Self {
             origin,
