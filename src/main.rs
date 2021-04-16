@@ -5,12 +5,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use rand::{Rng, SeedableRng};
-use rand_pcg::Pcg64;
+use light::PointLight;
 use structopt::StructOpt;
 
 use geom::Sphere;
-use material::{Dielectric, Diffuse, Material, Mirror};
+use material::{Dielectric, Diffuse, Mirror};
 use math::Vec3;
 use render::{Camera, CameraOptions, RenderOptions};
 use scene::{Scene, SceneBuilder};
@@ -59,8 +58,7 @@ struct CliArgs {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = CliArgs::from_args();
 
-    let mut scene_rng = Pcg64::seed_from_u64(17085947984061919587);
-    let scene = build_scene(&mut scene_rng);
+    let scene = build_scene();
 
     let camera_opts = CameraOptions {
         pixel_width: args.width,
@@ -69,8 +67,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         vert_fov: args.vfov,
         aperture: args.aperture,
 
-        origin: Vec3::new(12., 2., 3.),
-        look_at: Vec3::new(3.3, 0.5, 0.7),
+        origin: Vec3::new(0., 0., 0.5),
+        look_at: Vec3::new(0., 0., -0.5),
         vup: Vec3::new(0., 1., 0.),
     };
 
@@ -110,65 +108,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn build_scene(rng: &mut impl Rng) -> Scene {
-    const RANGE: i32 = 11;
-
+fn build_scene() -> Scene {
     let ground_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
-    let glass_material = Arc::new(Dielectric::new(1.5));
+    let pink_material = Arc::new(Diffuse::new(Vec3::new(1., 0.2, 0.2)));
+    let gold_material = Arc::new(Mirror::new(Vec3::new(0.8, 0.6, 0.2)));
+    let water_material = Arc::new(Dielectric::new(1.333));
 
     let mut builder = SceneBuilder::new();
 
+    builder.add_primitive(Sphere::new(Vec3::new(-0.5, 0., -1.), 0.5), pink_material);
+    builder.add_primitive(Sphere::new(Vec3::new(0.5, 0., -1.), 0.5), gold_material);
+    builder.add_primitive(Sphere::new(Vec3::new(0., -0.15, -0.5), 0.1), water_material);
     builder.add_primitive(
-        Sphere::new(Vec3::new(0., -1000., 0.), 1000.),
+        Sphere::new(Vec3::new(0., -100.5, -1.), 100.),
         ground_material,
     );
 
-    builder.add_primitive(
-        Sphere::new(Vec3::new(0., 1., 0.), 1.),
-        glass_material.clone(),
-    );
-
-    builder.add_primitive(
-        Sphere::new(Vec3::new(-4., 1., 0.), 1.),
-        Arc::new(Diffuse::new(Vec3::new(0.4, 0.2, 0.1))),
-    );
-
-    builder.add_primitive(
-        Sphere::new(Vec3::new(4., 1., 0.), 1.),
-        Arc::new(Mirror::new(Vec3::new(0.5, 0.6, 0.7))),
-    );
-
-    for a in -RANGE..RANGE {
-        for b in -RANGE..RANGE {
-            let center = Vec3::new(
-                a as f64 + 0.9 * rng.gen::<f64>(),
-                0.2,
-                b as f64 + 0.9 * rng.gen::<f64>(),
-            );
-
-            if (center - Vec3::new(4., 0.2, 0.)).norm() <= 0.9 {
-                continue;
-            }
-
-            let material_kind: f64 = rng.gen();
-
-            let material: Arc<dyn Material + Send + Sync> = if material_kind < 0.75 {
-                Arc::new(Diffuse::new(Vec3::new(rng.gen(), rng.gen(), rng.gen())))
-            } else if material_kind < 0.95 {
-                let albedo = Vec3::new(
-                    rng.gen_range(0.5..1.),
-                    rng.gen_range(0.5..1.),
-                    rng.gen_range(0.5..1.),
-                );
-
-                Arc::new(Mirror::new(albedo))
-            } else {
-                glass_material.clone()
-            };
-
-            builder.add_primitive(Sphere::new(center, 0.2), material);
-        }
-    }
+    builder.add_light(PointLight::new(
+        Vec3::new(0., 2., 0.5),
+        Vec3::from_element(10.),
+    ));
 
     builder.build()
 }
