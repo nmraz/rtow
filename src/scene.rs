@@ -23,11 +23,11 @@ impl<'a> PrimitiveHit<'a> {
     }
 
     pub fn shading(&self, ray: &Ray) -> ShadingInfo {
-        let incoming = -self.geom_hit.world_to_local(ray.dir);
+        let outgoing = -self.geom_hit.world_to_local(ray.dir);
 
         ShadingInfo {
             side: self.geom_hit.side,
-            incoming,
+            outgoing,
         }
     }
 }

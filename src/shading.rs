@@ -4,12 +4,12 @@ use crate::math::{Unit3, Vec3};
 #[derive(Debug, Clone, Copy)]
 pub struct ShadingInfo {
     pub side: HitSide,
-    pub incoming: Unit3,
+    pub outgoing: Unit3,
 }
 
 impl ShadingInfo {
     pub fn cos_theta(&self) -> f64 {
-        self.incoming[2]
+        self.outgoing[2]
     }
 
     pub fn sin_theta(&self) -> f64 {

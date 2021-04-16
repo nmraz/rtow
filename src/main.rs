@@ -10,7 +10,7 @@ use rand_pcg::Pcg64;
 use structopt::StructOpt;
 
 use geom::Sphere;
-use material::{Dielectric, Diffuse, Material, Metal};
+use material::{Dielectric, Diffuse, Material, Mirror};
 use math::Vec3;
 use render::{Camera, CameraOptions, RenderOptions};
 use scene::{Scene, SceneBuilder};
@@ -135,7 +135,7 @@ fn build_scene(rng: &mut impl Rng) -> Scene {
 
     builder.add_primitive(
         Sphere::new(Vec3::new(4., 1., 0.), 1.),
-        Arc::new(Metal::new(Vec3::new(0.5, 0.6, 0.7), 1.)),
+        Arc::new(Mirror::new(Vec3::new(0.5, 0.6, 0.7))),
     );
 
     for a in -RANGE..RANGE {
@@ -161,9 +161,7 @@ fn build_scene(rng: &mut impl Rng) -> Scene {
                     rng.gen_range(0.5..1.),
                 );
 
-                let gloss = rng.gen_range(0.5..1.);
-
-                Arc::new(Metal::new(albedo, gloss))
+                Arc::new(Mirror::new(albedo))
             } else {
                 glass_material.clone()
             };
