@@ -1,12 +1,13 @@
 use std::{f64, iter};
 
+use rand::prelude::SliceRandom;
 use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitDisc};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::math::{OrthoNormalBasis, Ray, Unit3, Vec3};
-use crate::scene::Scene;
-use crate::shading::Pdf;
+use crate::math::{OrthoNormalBasis, Ray, Unit3, Vec3, EPSILON};
+use crate::scene::{PrimitiveHit, Scene};
+use crate::shading::ShadingInfo;
 
 pub struct CameraOptions {
     pub pixel_width: u32,
@@ -146,25 +147,49 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
             }
         };
 
-        let shading = hit.shading(&ray);
+        let shading_info = hit.shading_info(&ray);
 
-        let sample = match hit.material.sample_bsdf(&shading, rng) {
+        if !hit.material.is_always_specular() {
+            if let Some(direct_radiance) = sample_light(scene, &hit, &shading_info, rng) {
+                radiance += throughput.component_mul(&direct_radiance);
+            }
+        }
+
+        let sample = match hit.material.sample_bsdf(&shading_info, rng) {
             Some(sample) => sample,
             None => break,
         };
 
-        let pdf_factor = match sample.pdf {
-            Pdf::Real(pdf) => 1. / pdf,
-            Pdf::Delta => 1.,
-        };
-
-        let attenuation = shading.cos_theta() * pdf_factor * sample.color;
-        throughput.component_mul_assign(&attenuation);
+        throughput.component_mul_assign(&sample.scaled_color());
 
         ray = hit.geom_hit.spawn_ray(sample.dir);
     }
 
     radiance
+}
+
+fn sample_light(
+    scene: &Scene,
+    hit: &PrimitiveHit<'_>,
+    shading_info: &ShadingInfo,
+    rng: &mut dyn RngCore,
+) -> Option<Vec3> {
+    let light = scene.lights().choose(rng)?;
+    let (sample, dist) = light.sample_incident_at(hit.geom_hit.point, rng)?;
+
+    let occluded = scene
+        .hit(&hit.geom_hit.spawn_ray(sample.dir), dist - EPSILON)
+        .is_some();
+
+    if !occluded {
+        let radiance = sample
+            .scaled_color()
+            .component_mul(&hit.material.bsdf(shading_info, sample.dir));
+
+        Some(radiance)
+    } else {
+        None
+    }
 }
 
 fn sample_background(ray: &Ray) -> Vec3 {

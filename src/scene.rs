@@ -22,7 +22,7 @@ impl<'a> PrimitiveHit<'a> {
         Self { geom_hit, material }
     }
 
-    pub fn shading(&self, ray: &Ray) -> ShadingInfo {
+    pub fn shading_info(&self, ray: &Ray) -> ShadingInfo {
         let outgoing = -self.geom_hit.world_to_local(ray.dir);
 
         ShadingInfo {
