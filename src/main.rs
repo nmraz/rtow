@@ -9,7 +9,7 @@ use light::PointLight;
 use structopt::StructOpt;
 
 use geom::Sphere;
-use material::{Dielectric, Diffuse, Mirror};
+use material::{Dielectric, Lambertian, Mirror};
 use math::Vec3;
 use render::{Camera, CameraOptions, RenderOptions};
 use scene::{Scene, SceneBuilder};
@@ -109,8 +109,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn build_scene() -> Scene {
-    let ground_material = Arc::new(Diffuse::new(Vec3::new(0.5, 0.5, 0.5)));
-    let pink_material = Arc::new(Diffuse::new(Vec3::new(1., 0.2, 0.2)));
+    let ground_material = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
+    let pink_material = Arc::new(Lambertian::new(Vec3::new(1., 0.2, 0.2)));
     let gold_material = Arc::new(Mirror::new(Vec3::new(0.8, 0.6, 0.2)));
     let water_material = Arc::new(Dielectric::new(1.333));
 

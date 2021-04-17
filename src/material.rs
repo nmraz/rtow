@@ -67,17 +67,17 @@ impl<M: SpecularMaterial> Material for M {
     }
 }
 
-pub struct Diffuse {
+pub struct Lambertian {
     albedo: Vec3,
 }
 
-impl Diffuse {
+impl Lambertian {
     pub fn new(albedo: Vec3) -> Self {
         Self { albedo }
     }
 }
 
-impl Material for Diffuse {
+impl Material for Lambertian {
     fn sample_bsdf(
         &self,
         _shading_info: &ShadingInfo,
