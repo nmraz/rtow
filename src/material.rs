@@ -161,25 +161,22 @@ impl SpecularMaterial for Dielectric {
         let cos_theta = shading_info.cos_theta();
         let sin_theta = shading_info.sin_theta();
 
-        let (dir, attenuation) = if refractive_ratio * sin_theta > 1.
+        let dir = if refractive_ratio * sin_theta > 1.
             || rng.gen::<f64>() < dielectric_reflectance(cos_theta, refractive_ratio)
         {
-            (reflect_z(outgoing), 1.)
+            reflect_z(outgoing)
         } else {
             let up = *Vec3::z_axis();
 
             let refracted_perp = refractive_ratio * (cos_theta * up - outgoing);
             let refracted_par = -(1. - refracted_perp.norm_squared()).sqrt() * up;
 
-            (
-                refracted_perp + refracted_par,
-                refractive_ratio * refractive_ratio,
-            )
+            refracted_perp + refracted_par
         };
 
         Some(SpecularScatter::new(
             Unit3::new_normalize(dir),
-            Vec3::from_element(attenuation),
+            Vec3::from_element(1.),
         ))
     }
 }
