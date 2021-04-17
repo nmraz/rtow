@@ -129,5 +129,15 @@ fn build_scene() -> Scene {
         Vec3::from_element(10.),
     ));
 
+    builder.add_light(PointLight::new(
+        Vec3::new(0.5, 2., -1.),
+        10. * Vec3::new(0.5, 0.5, 0.8),
+    ));
+
+    builder.add_light(PointLight::new(
+        Vec3::new(-0.5, 2., -1.),
+        10. * Vec3::new(0.5, 0.8, 0.5),
+    ));
+
     builder.build()
 }
