@@ -149,7 +149,7 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
         let shading_info = hit.shading_info(&ray);
 
         if !hit.material.is_always_specular() {
-            if let Some(direct_radiance) = sample_light(scene, &hit, &shading_info, rng) {
+            if let Some(direct_radiance) = sample_single_light(scene, &hit, &shading_info, rng) {
                 radiance += throughput.component_mul(&direct_radiance);
             }
         }
@@ -167,7 +167,7 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
     radiance
 }
 
-fn sample_light(
+fn sample_single_light(
     scene: &Scene,
     hit: &PrimitiveHit<'_>,
     shading_info: &ShadingInfo,
@@ -187,7 +187,7 @@ fn sample_light(
             .scaled_color()
             .component_mul(&hit.material.bsdf(shading_info, sample.dir));
 
-        Some(radiance)
+        Some(radiance * scene.lights().len() as f64)
     } else {
         None
     }
