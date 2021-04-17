@@ -43,12 +43,12 @@ impl HitInfo {
         Unit3::new_unchecked(self.basis.trans_to_canonical(*local))
     }
 
-    pub fn spawn_ray(&self, dir: Unit3) -> Ray {
+    pub fn spawn_world_ray(&self, dir: Unit3) -> Ray {
         Ray::new(self.point, dir)
     }
 
     pub fn spawn_local_ray(&self, local_dir: Unit3) -> Ray {
-        self.spawn_ray(self.local_to_world(local_dir))
+        self.spawn_world_ray(self.local_to_world(local_dir))
     }
 }
 

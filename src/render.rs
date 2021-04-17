@@ -179,7 +179,7 @@ fn sample_single_light(
     let (sample, dist) = light.sample_incident_at(geom_hit, rng)?;
 
     let occluded = scene
-        .hit(&geom_hit.spawn_ray(sample.dir), dist - EPSILON)
+        .hit(&geom_hit.spawn_local_ray(sample.dir), dist - EPSILON)
         .is_some();
 
     if !occluded {
