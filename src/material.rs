@@ -48,7 +48,7 @@ impl<M: SpecularMaterial> Material for M {
         rng: &mut dyn RngCore,
     ) -> Option<SampledRadiance> {
         let scatter = self.sample_specular_scatter(shading_info, rng)?;
-        Some(SampledRadiance::new_specular(
+        Some(SampledRadiance::new_delta(
             scatter.dir,
             scatter.attenuation / shading::cos_theta(scatter.dir),
         ))

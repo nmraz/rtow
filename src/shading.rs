@@ -60,7 +60,7 @@ impl SampledRadiance {
         }
     }
 
-    pub fn new_specular(dir: Unit3, color: Vec3) -> Self {
+    pub fn new_delta(dir: Unit3, color: Vec3) -> Self {
         Self {
             dir,
             color,

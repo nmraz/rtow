@@ -31,7 +31,7 @@ impl Light for PointLight {
     ) -> Option<(SampledRadiance, f64)> {
         let (dir, dist) = Unit3::new_and_get(self.point - hit.point);
         Some((
-            SampledRadiance::new_specular(hit.world_to_local(dir), self.color / dist.powi(2)),
+            SampledRadiance::new_delta(hit.world_to_local(dir), self.color / dist.powi(2)),
             dist,
         ))
     }
