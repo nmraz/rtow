@@ -1,8 +1,20 @@
+use std::array::IntoIter;
 use std::io::Write;
 
 use png::{BitDepth, ColorType, Encoder, EncodingError};
 
 use crate::math::Vec3;
+
+fn luminance(color: &Vec3) -> f64 {
+    0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2]
+}
+
+fn tone_map(color: &Vec3, max_y: f64) -> Vec3 {
+    let y = luminance(color);
+    let scale = (1. + y / max_y.powi(2)) / (1. + y);
+
+    scale * color
+}
 
 fn gamma_correct(v: f64) -> f64 {
     if v <= 0.0031308 {
@@ -17,10 +29,20 @@ fn channel_to_raw(v: f64) -> u8 {
 }
 
 pub fn pixels_to_srgb(pixels: &[Vec3]) -> Vec<u8> {
+    let max_y = pixels
+        .iter()
+        .map(luminance)
+        .max_by(|y1, y2| y1.partial_cmp(y2).unwrap())
+        .unwrap_or(1.);
+
     pixels
         .iter()
-        .flatten()
-        .map(|&v| channel_to_raw(v))
+        .map(|color| tone_map(color, max_y))
+        .flat_map(|color| {
+            let vals: [_; 3] = color.into();
+            IntoIter::new(vals)
+        })
+        .map(channel_to_raw)
         .collect()
 }
 
