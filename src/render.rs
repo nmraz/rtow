@@ -135,10 +135,12 @@ pub fn render_to(buf: &mut [Vec3], scene: &Scene, camera: &Camera, opts: &Render
 }
 
 fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32) -> Vec3 {
+    const MIN_RR_DEPTH: u32 = 5;
+
     let mut radiance = Vec3::default();
     let mut throughput = Vec3::from_element(1.);
 
-    for _ in 0..max_depth {
+    for depth in 0..max_depth {
         let hit = match scene.hit(&ray, f64::INFINITY) {
             Some(hit) => hit,
             None => {
@@ -160,6 +162,21 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
         };
 
         throughput.component_mul_assign(&sample.scaled_color());
+
+        if depth > MIN_RR_DEPTH {
+            let q = throughput.max();
+            if q < EPSILON {
+                break;
+            }
+
+            if q < 1. {
+                if rng.gen::<f64>() > q {
+                    break;
+                }
+
+                throughput /= q;
+            }
+        }
 
         ray = hit.geom_hit.spawn_local_ray(sample.dir);
     }
