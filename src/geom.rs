@@ -77,7 +77,7 @@ impl Geom for Sphere {
     fn hit(&self, ray: &Ray, t_max: f64) -> Option<RawHitInfo> {
         let oc = ray.origin - self.center;
         let b = oc.dot(&ray.dir);
-        let c = oc.norm_squared() - self.radius * self.radius;
+        let c = oc.norm_squared() - self.radius.powi(2);
 
         let discriminant = b * b - c;
 
