@@ -193,16 +193,20 @@ fn sample_single_light(
     let geom_hit = &hit.geom_hit;
 
     let light = scene.lights().choose(rng)?;
-    let (sample, dist) = light.sample_incident_at(geom_hit, rng)?;
+    let sample = light.sample_incident_at(geom_hit, rng)?;
 
     let occluded = scene
-        .hit(&geom_hit.spawn_local_ray(sample.dir), dist - EPSILON)
+        .hit(
+            &geom_hit.spawn_local_ray(sample.radiance.dir),
+            sample.t - EPSILON,
+        )
         .is_some();
 
     if !occluded {
         let radiance = sample
+            .radiance
             .scaled_color()
-            .component_mul(&hit.material.bsdf(shading_info, sample.dir));
+            .component_mul(&hit.material.bsdf(shading_info, sample.radiance.dir));
 
         Some(radiance * scene.lights().len() as f64)
     } else {
