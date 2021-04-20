@@ -191,12 +191,17 @@ fn sample_single_light(
     rng: &mut dyn RngCore,
 ) -> Vec3 {
     let light = match scene.lights().choose(rng) {
-        Some(light) => light,
+        Some(light) => &**light,
         None => return Vec3::default(),
     };
 
-    sample_lighting_from_light(&**light, scene, hit, shading_info, rng).unwrap_or_default()
-        * scene.lights().len() as f64
+    let from_light =
+        sample_lighting_from_light(light, scene, hit, shading_info, rng).unwrap_or_default();
+
+    let from_object =
+        sample_lighting_from_object(light, scene, hit, shading_info, rng).unwrap_or_default();
+
+    (from_light + from_object) * scene.lights().len() as f64
 }
 
 fn sample_lighting_from_light(
@@ -208,6 +213,7 @@ fn sample_lighting_from_light(
 ) -> Option<Vec3> {
     let geom_hit = &hit.geom_hit;
     let material = hit.material;
+
     let sample = light.sample_incident_at(geom_hit, rng)?;
 
     let occluded = scene
@@ -222,7 +228,7 @@ fn sample_lighting_from_light(
     }
 
     let weight = match sample.radiance.pdf {
-        Pdf::Real(pdf) => power_weight(pdf, 1.),
+        Pdf::Real(pdf) => power_weight(pdf, material.pdf(shading_info, sample.radiance.dir)),
         Pdf::Delta => 1.,
     };
 
@@ -233,6 +239,34 @@ fn sample_lighting_from_light(
                 .scaled_color()
                 .component_mul(&material.bsdf(shading_info, sample.radiance.dir)),
     )
+}
+
+fn sample_lighting_from_object(
+    light: &dyn Light,
+    scene: &Scene,
+    hit: &PrimitiveHit<'_>,
+    shading_info: &ShadingInfo,
+    rng: &mut dyn RngCore,
+) -> Option<Vec3> {
+    let geom_hit = &hit.geom_hit;
+    let material = hit.material;
+
+    let sample = material.sample_bsdf(shading_info, rng)?;
+    let ray = geom_hit.spawn_local_ray(sample.dir);
+
+    let emitted = light.emitted(&ray)?;
+    let occluded = scene.hit(&ray, emitted.t - EPSILON).is_some();
+
+    if occluded {
+        return None;
+    }
+
+    let weight = match sample.pdf {
+        Pdf::Real(pdf) => power_weight(pdf, light.pdf(geom_hit, sample.dir)),
+        Pdf::Delta => 1.,
+    };
+
+    Some(weight * sample.scaled_color().component_mul(&emitted.color))
 }
 
 fn power_weight(f: f64, g: f64) -> f64 {

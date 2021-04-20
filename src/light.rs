@@ -33,6 +33,7 @@ pub trait Light {
         hit: &HitInfo,
         rng: &mut dyn RngCore,
     ) -> Option<SampledLightRadiance>;
+    fn pdf(&self, hit: &HitInfo, local_dir: Unit3) -> f64;
 
     fn emitted(&self, ray: &Ray) -> Option<EmittedRadiance>;
 }
@@ -59,6 +60,10 @@ impl Light for PointLight {
             SampledRadiance::new_delta(hit.world_to_local(dir), self.color / t.powi(2)),
             t,
         ))
+    }
+
+    fn pdf(&self, _hit: &HitInfo, _local_dir: Unit3) -> f64 {
+        0.
     }
 
     fn emitted(&self, _ray: &Ray) -> Option<EmittedRadiance> {
