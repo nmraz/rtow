@@ -252,6 +252,11 @@ fn sample_lighting_from_object(
     let material = hit.material;
 
     let sample = material.sample_bsdf(shading_info, rng)?;
+    let pdf = match sample.pdf {
+        Pdf::Real(pdf) => pdf,
+        Pdf::Delta => return None,
+    };
+
     let ray = geom_hit.spawn_local_ray(sample.dir);
 
     let emitted = light.emitted(&ray)?;
@@ -261,11 +266,7 @@ fn sample_lighting_from_object(
         return None;
     }
 
-    let weight = match sample.pdf {
-        Pdf::Real(pdf) => power_weight(pdf, light.pdf(geom_hit, sample.dir)),
-        Pdf::Delta => 1.,
-    };
-
+    let weight = power_weight(pdf, light.pdf(geom_hit, sample.dir));
     Some(weight * sample.scaled_color().component_mul(&emitted.color))
 }
 
