@@ -5,9 +5,10 @@ use rand::{Rng, RngCore};
 use rand_distr::{Distribution, UnitDisc};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
+use crate::light::Light;
 use crate::math::{OrthoNormalBasis, Ray, Unit3, Vec3, EPSILON};
 use crate::scene::{PrimitiveHit, Scene};
-use crate::shading::ShadingInfo;
+use crate::shading::{Pdf, ShadingInfo};
 
 pub struct CameraOptions {
     pub pixel_width: u32,
@@ -151,9 +152,8 @@ fn trace_ray(scene: &Scene, mut ray: Ray, rng: &mut dyn RngCore, max_depth: u32)
         let shading_info = hit.shading_info(&ray);
 
         if !hit.material.is_always_specular() {
-            if let Some(direct_radiance) = sample_single_light(scene, &hit, &shading_info, rng) {
-                radiance += throughput.component_mul(&direct_radiance);
-            }
+            radiance +=
+                throughput.component_mul(&sample_single_light(scene, &hit, &shading_info, rng));
         }
 
         let sample = match hit.material.sample_bsdf(&shading_info, rng) {
@@ -189,10 +189,25 @@ fn sample_single_light(
     hit: &PrimitiveHit<'_>,
     shading_info: &ShadingInfo,
     rng: &mut dyn RngCore,
+) -> Vec3 {
+    let light = match scene.lights().choose(rng) {
+        Some(light) => light,
+        None => return Vec3::default(),
+    };
+
+    sample_lighting_from_light(&**light, scene, hit, shading_info, rng).unwrap_or_default()
+        * scene.lights().len() as f64
+}
+
+fn sample_lighting_from_light(
+    light: &dyn Light,
+    scene: &Scene,
+    hit: &PrimitiveHit<'_>,
+    shading_info: &ShadingInfo,
+    rng: &mut dyn RngCore,
 ) -> Option<Vec3> {
     let geom_hit = &hit.geom_hit;
-
-    let light = scene.lights().choose(rng)?;
+    let material = hit.material;
     let sample = light.sample_incident_at(geom_hit, rng)?;
 
     let occluded = scene
@@ -202,14 +217,24 @@ fn sample_single_light(
         )
         .is_some();
 
-    if !occluded {
-        let radiance = sample
-            .radiance
-            .scaled_color()
-            .component_mul(&hit.material.bsdf(shading_info, sample.radiance.dir));
-
-        Some(radiance * scene.lights().len() as f64)
-    } else {
-        None
+    if occluded {
+        return None;
     }
+
+    let weight = match sample.radiance.pdf {
+        Pdf::Real(pdf) => power_weight(pdf, 1.),
+        Pdf::Delta => 1.,
+    };
+
+    Some(
+        weight
+            * sample
+                .radiance
+                .scaled_color()
+                .component_mul(&material.bsdf(shading_info, sample.radiance.dir)),
+    )
+}
+
+fn power_weight(f: f64, g: f64) -> f64 {
+    f.powi(2) / (f.powi(2) + g.powi(2))
 }
