@@ -79,7 +79,7 @@ impl Geom for Sphere {
         let b = oc.dot(&ray.dir);
         let c = oc.norm_squared() - self.radius.powi(2);
 
-        let discriminant = b * b - c;
+        let discriminant = b.powi(2) - c;
 
         if discriminant < 0. {
             return None;
