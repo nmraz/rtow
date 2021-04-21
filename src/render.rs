@@ -215,15 +215,9 @@ fn sample_lighting_from_light(
     let material = hit.material;
 
     let sample = light.sample_incident_at(geom_hit, rng)?;
+    let shadow_ray = geom_hit.spawn_local_ray(sample.radiance.dir);
 
-    let occluded = scene
-        .hit(
-            &geom_hit.spawn_local_ray(sample.radiance.dir),
-            sample.t - EPSILON,
-        )
-        .is_some();
-
-    if occluded {
+    if scene.hit(&shadow_ray, sample.t - EPSILON).is_some() {
         return None;
     }
 
@@ -257,12 +251,10 @@ fn sample_lighting_from_object(
         Pdf::Delta => return None,
     };
 
-    let ray = geom_hit.spawn_local_ray(sample.dir);
+    let shadow_ray = geom_hit.spawn_local_ray(sample.dir);
+    let emitted = light.emitted(&shadow_ray)?;
 
-    let emitted = light.emitted(&ray)?;
-    let occluded = scene.hit(&ray, emitted.t - EPSILON).is_some();
-
-    if occluded {
+    if scene.hit(&shadow_ray, emitted.t - EPSILON).is_some() {
         return None;
     }
 
